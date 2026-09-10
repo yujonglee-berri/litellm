@@ -28,6 +28,8 @@ pub const PORTING_MANAGEMENT_ROUTES: &[&str] = &[
     "/model/info",
     "/v1/mcp/server",
     "/v1/mcp/server/*path",
+    "/v1/a2a/discover",
     "/v1/agents",
     "/v1/agents/*path",
+    "/agent/daily/activity",
 ];

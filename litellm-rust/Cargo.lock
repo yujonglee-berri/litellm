@@ -1777,6 +1777,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "litellm-gateway-agent"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "litellm-gateway-auth",
+ "thiserror 2.0.19",
+ "tokio",
+ "tower",
+]
+
+[[package]]
 name = "litellm-gateway-auth"
 version = "0.1.0"
 dependencies = [

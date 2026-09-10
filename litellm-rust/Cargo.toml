@@ -7,6 +7,7 @@ members = [
     "crates/auth-oauth",
     "crates/core",
     "crates/config",
+    "crates/gateway-agent",
     "crates/gateway-inference",
     "crates/gateway-management",
     "crates/gateway-auth",
@@ -30,6 +31,7 @@ litellm-auth-aws = { path = "crates/auth-aws" }
 litellm-auth-google = { path = "crates/auth-google" }
 litellm-auth-oauth = { path = "crates/auth-oauth" }
 litellm-config = { path = "crates/config" }
+litellm-gateway-agent = { path = "crates/gateway-agent", default-features = false }
 litellm-gateway-inference = { path = "crates/gateway-inference", default-features = false }
 litellm-gateway-management = { path = "crates/gateway-management", default-features = false }
 litellm-gateway-auth = { path = "crates/gateway-auth", default-features = false }

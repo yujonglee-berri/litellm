@@ -1,7 +1,8 @@
-//! Enforcement: the litellm-rust workspace has exactly thirteen crates.
+//! Enforcement: the litellm-rust workspace has exactly fourteen crates.
 //!
 //! `core` (the Rust SDK), `config` (the config-loading boundary),
-//! `gateway-inference` and `gateway-management` (the HTTP/WebSocket hosts),
+//! `gateway-inference`, `gateway-agent`, and `gateway-management` (the
+//! HTTP/WebSocket hosts),
 //! `python-interop` (domain-neutral PyO3 primitives), and `python-bridge` (the
 //! PyO3 cdylib). Adding or removing a crate must be a
 //! deliberate act: this test fails until the allowlist here is updated, forcing
@@ -26,6 +27,7 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/auth-oauth",
     "crates/core",
     "crates/config",
+    "crates/gateway-agent",
     "crates/gateway-inference",
     "crates/gateway-management",
     "crates/gateway-auth",
@@ -43,6 +45,7 @@ const EXPECTED_CRATE_DIRS: &[&str] = &[
     "auth-oauth",
     "core",
     "config",
+    "gateway-agent",
     "gateway-inference",
     "gateway-management",
     "gateway-auth",
