@@ -3,6 +3,7 @@ use std::time::Duration;
 use reqwest::Url;
 use tokio::time::Instant;
 
+use crate::auth::Auth;
 use crate::constants::{AZURE_DI_SUBSCRIPTION_HEADER, OCR_POLL_RETRY_SECS};
 use crate::ocr::client::read_json_response;
 use crate::ocr::codecs::document_intelligence::{
@@ -17,6 +18,7 @@ pub(super) async fn read_operation_response(
     response: reqwest::Response,
     original_url: &str,
     headers: &[(String, String)],
+    auth: &impl Auth,
     connection: &OcrConnection,
     native: bool,
 ) -> Result<DecodedOcrResponse<AzureDocumentIntelligenceOperation>, OcrError> {
@@ -36,13 +38,20 @@ pub(super) async fn read_operation_response(
     {
         return Err(OcrPollingError::PollOrigin.into());
     }
-    poll_operation(http_client, operation, headers, connection, native).await
+    poll_operation(http_client, operation, headers, auth, connection, native).await
 }
 
+#[tracing::instrument(
+    name = "poll_document_intelligence",
+    target = "litellm::function_trace",
+    level = "trace",
+    skip_all
+)]
 async fn poll_operation(
     http_client: &reqwest::Client,
     url: Url,
     headers: &[(String, String)],
+    auth: &impl Auth,
     connection: &OcrConnection,
     native: bool,
 ) -> Result<DecodedOcrResponse<AzureDocumentIntelligenceOperation>, OcrError> {
@@ -62,6 +71,14 @@ async fn poll_operation(
             headers,
             crate::http_utils::HeaderPolicy::Only(&[AZURE_DI_SUBSCRIPTION_HEADER, "authorization"]),
         );
+        let request = builder
+            .build()
+            .map_err(crate::error::TransportError::from)?;
+        let request = auth
+            .authenticate(request)
+            .await
+            .map_err(crate::Error::from)?;
+        let builder = reqwest::RequestBuilder::from_parts(http_client.clone(), request);
         let response = tokio::time::timeout_at(deadline, crate::http_utils::http_request(builder))
             .await
             .map_err(|_| OcrPollingError::PollTimeout)?

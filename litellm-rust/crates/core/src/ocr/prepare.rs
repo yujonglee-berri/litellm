@@ -14,7 +14,17 @@ pub(crate) struct ParsedProviderParams<T> {
     pub extra_params: Map<String, Value>,
 }
 
-#[tracing::instrument(target = "litellm::function_trace", level = "trace", skip_all)]
+impl<T> ParsedProviderParams<T> {
+    pub(crate) fn into_known(self) -> T {
+        let Self {
+            known,
+            extra_params,
+        } = self;
+        drop(extra_params);
+        known
+    }
+}
+
 pub(crate) fn _prepare_ocr_request<T: DeserializeOwned>(
     request: &LiteLLMOcrRequest,
 ) -> Result<ParsedProviderParams<T>, OcrRequestError> {
@@ -40,7 +50,7 @@ where
             .hooks
             .during_call(OcrDuringCallRequest {
                 model: request.model.clone(),
-                custom_llm_provider: request.adapter.provider().as_str().into(),
+                custom_llm_provider: request.pipeline.provider().as_str().into(),
                 url: url.into(),
                 body: serde_json::to_value(body).map_err(|_| OcrRequestError::RequestField {
                     path: "body".into(),
@@ -88,7 +98,7 @@ pub(crate) async fn guardrail_document(
         .hooks
         .during_call(OcrDuringCallRequest {
             model: request.model.clone(),
-            custom_llm_provider: request.adapter.provider().as_str().into(),
+            custom_llm_provider: request.pipeline.provider().as_str().into(),
             url: url.into(),
             body: serde_json::to_value(&request.document).map_err(|_| {
                 OcrRequestError::RequestField {

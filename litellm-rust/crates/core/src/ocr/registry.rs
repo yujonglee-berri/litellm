@@ -1,25 +1,38 @@
-use super::adapters::OcrAdapter;
 use crate::Error;
 use crate::routing_utils::provider::{CustomLlmProvider, get_custom_llm_provider};
 
-macro_rules! define_adapter_types {
-    ($( $variant:ident, $adapter:ty, $instance:expr, $provider:ident; )+) => {
+macro_rules! define_pipeline_types {
+    ($( $variant:ident, $auth:expr, $endpoint:expr, $codec:expr, $execution:expr, $provider:ident; )+) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-        pub(crate) enum OcrAdapterKind {
+        pub(crate) enum OcrPipelineKind {
             $( $variant, )+
         }
 
-        impl OcrAdapterKind {
+        impl OcrPipelineKind {
             pub(crate) const fn provider(self) -> OcrProvider {
                 match self {
-                    $( Self::$variant => <$adapter>::PROVIDER, )+
+                    $( Self::$variant => OcrProvider::$provider, )+
                 }
             }
         }
     };
 }
 
-super::adapters::for_each_ocr_adapter!(define_adapter_types);
+macro_rules! for_each_ocr_pipeline {
+    ($callback:ident) => {
+        $callback! {
+            Mistral, $crate::ocr::auth::MistralAuth, $crate::ocr::endpoints::MistralEndpoint, $crate::ocr::codecs::mistral::MistralOcrCodec, $crate::ocr::execution::JsonExecution, Mistral;
+            AzureMistral, $crate::ocr::auth::AzureOcrAuth::Mistral, $crate::ocr::endpoints::AzureMistralEndpoint, $crate::ocr::codecs::mistral::MistralOcrCodec, $crate::ocr::execution::InlineJsonExecution, AzureAi;
+            AzureDocumentIntelligence, $crate::ocr::auth::AzureOcrAuth::DocumentIntelligence, $crate::ocr::endpoints::AzureDocumentIntelligenceEndpoint, $crate::ocr::codecs::document_intelligence::DocumentIntelligenceCodec, $crate::ocr::execution::DocumentIntelligenceExecution, AzureAi;
+            ReductoLegacy, $crate::ocr::auth::ReductoAuth, $crate::ocr::endpoints::ReductoEndpoint, $crate::ocr::codecs::reducto::ReductoLegacyCodec, $crate::ocr::execution::ReductoExecution, Reducto;
+            ReductoV3, $crate::ocr::auth::ReductoAuth, $crate::ocr::endpoints::ReductoEndpoint, $crate::ocr::codecs::reducto::ReductoV3Codec, $crate::ocr::execution::ReductoExecution, Reducto;
+        }
+    };
+}
+
+for_each_ocr_pipeline!(define_pipeline_types);
+
+pub(crate) use for_each_ocr_pipeline;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum OcrProvider {
@@ -38,10 +51,10 @@ impl OcrProvider {
     }
 }
 
-pub(crate) fn resolve_wire_adapter(
+pub(crate) fn resolve_wire_pipeline(
     model: &str,
     custom_llm_provider: Option<&str>,
-) -> Result<(String, OcrAdapterKind), Error> {
+) -> Result<(String, OcrPipelineKind), Error> {
     let provider =
         get_custom_llm_provider(model, custom_llm_provider).unwrap_or(CustomLlmProvider {
             model,
@@ -54,16 +67,16 @@ pub(crate) fn resolve_wire_adapter(
         value => return Err(Error::InvalidProvider(value.to_string())),
     };
     match typed_provider {
-        OcrProvider::Mistral => Ok((provider.model.to_string(), OcrAdapterKind::Mistral)),
+        OcrProvider::Mistral => Ok((provider.model.to_string(), OcrPipelineKind::Mistral)),
         OcrProvider::AzureAi if is_document_intelligence_model(provider.model) => Ok((
             provider.model.to_string(),
-            OcrAdapterKind::AzureDocumentIntelligence,
+            OcrPipelineKind::AzureDocumentIntelligence,
         )),
-        OcrProvider::AzureAi => Ok((provider.model.to_string(), OcrAdapterKind::AzureMistral)),
+        OcrProvider::AzureAi => Ok((provider.model.to_string(), OcrPipelineKind::AzureMistral)),
         OcrProvider::Reducto if provider.model.eq_ignore_ascii_case("parse-legacy") => {
-            Ok((provider.model.to_string(), OcrAdapterKind::ReductoLegacy))
+            Ok((provider.model.to_string(), OcrPipelineKind::ReductoLegacy))
         }
-        OcrProvider::Reducto => Ok((provider.model.to_string(), OcrAdapterKind::ReductoV3)),
+        OcrProvider::Reducto => Ok((provider.model.to_string(), OcrPipelineKind::ReductoV3)),
     }
 }
 

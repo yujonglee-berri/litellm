@@ -11,7 +11,7 @@ COMMON_MAPPINGS: Final = (
     mapping(rust_span="ocr", python_frame=r"ocr/main\.py:\d+ a?ocr$"),
     mapping(rust_span="prepare_ocr_call", python_frame=r"ocr/main\.py:\d+ _prepare_ocr_request$"),
     mapping(rust_span="ocr_provider_config", python_frame=r"ProviderConfigManager\.get_provider_ocr_config$"),
-    mapping(rust_span="supported_ocr_params", python_frame=r"get_supported_ocr_params$"),
+    mapping(span="python_supported_ocr_params", python_frame=r"get_supported_ocr_params$"),
     mapping(rust_span="map_ocr_params", python_frame=r"(?<!async_)map_ocr_params$"),
     mapping(rust_span="validate_environment", python_frame=r"(?<!_)validate_environment$"),
     mapping(rust_span="complete_url", python_frame=r"get_complete_url$"),
@@ -27,9 +27,16 @@ SUCCESS_CALLBACK_ASYNC_MAPPING: Final = mapping(
     rust_span="success_callback",
     python_frame=r"Logging\.async_success_handler$",
 )
-FAILURE_CALLBACK_MAPPING: Final = mapping(
+FAILURE_CALLBACK_SYNC_MAPPING: Final = mapping(
     rust_span="failure_callback",
-    python_frame=r"Logging\.(?:async_)?failure_handler$",
+    python_frame=r"Logging\.failure_handler$",
+)
+FAILURE_CALLBACK_ASYNC_MAPPING: Final = mapping(
+    rust_span="failure_callback",
+    python_frame=r"Logging\.async_failure_handler$",
+)
+PYTHON_FAILURE_CALLBACK_WRAPPER: Final = mapping(
+    span="python_failure_callback_wrapper", python_frame=r"Logging\.failure_handler$"
 )
 IGNORED_SUCCESS_CALLBACK_MAPPING: Final = mapping(rust_span="success_callback")
 
@@ -58,24 +65,26 @@ CALLBACK_SUCCESS_ASYNC_MAPPINGS: Final = (*ASYNC_MAPPINGS, SUCCESS_CALLBACK_ASYN
 CALLBACK_FAILURE_SYNC_MAPPINGS: Final = (
     *COMMON_MAPPINGS,
     mapping(rust_span="execute_ocr_provider_call", python_frame=r"BaseLLMHTTPHandler\.ocr$"),
-    FAILURE_CALLBACK_MAPPING,
+    FAILURE_CALLBACK_SYNC_MAPPING,
 )
 CALLBACK_FAILURE_ASYNC_MAPPINGS: Final = (
     *COMMON_MAPPINGS,
     mapping(span="python_ocr_wrapper", python_frame=r"BaseLLMHTTPHandler\.ocr$"),
     mapping(rust_span="execute_ocr_provider_call", python_frame=r"BaseLLMHTTPHandler\.async_ocr$"),
-    FAILURE_CALLBACK_MAPPING,
+    PYTHON_FAILURE_CALLBACK_WRAPPER,
+    FAILURE_CALLBACK_ASYNC_MAPPING,
 )
 
 
 AZURE_COMMON_MAPPINGS: Final = (
     *COMMON_MAPPINGS[:7],
     mapping(
+        span="python_azure_transform_ocr_request_wrapper",
+        python_frame=r"AzureAIOCRConfig\.(?:async_)?transform_ocr_request$",
+    ),
+    mapping(
         rust_span="transform_ocr_request",
-        python_frame=(
-            r"AzureAIOCRConfig\.(?:async_)?transform_ocr_request$"
-            r"|MistralOCRConfig\.transform_ocr_request$"
-        ),
+        python_frame=r"MistralOCRConfig\.transform_ocr_request$",
     ),
     COMMON_MAPPINGS[-1],
 )
@@ -250,7 +259,9 @@ def _azure_document_intelligence_fixture(engine: Engine, base_url: str) -> Route
 
 
 VERTEX_COMMON_MAPPINGS: Final = (
-    *COMMON_MAPPINGS[:7],
+    *COMMON_MAPPINGS[:3],
+    mapping(rust_span="supported_ocr_params", python_frame=r"get_supported_ocr_params$"),
+    *COMMON_MAPPINGS[4:7],
     mapping(
         rust_span="transform_ocr_request",
         python_frame=(
@@ -311,7 +322,8 @@ DOCUMENT_INTELLIGENCE_COMMON_MAPPINGS: Final = (
     mapping(rust_span="prepare_ocr_call", python_frame=r"ocr/main\.py:\d+ _prepare_ocr_request$"),
     mapping(rust_span="ocr_provider_config", python_frame=r"ProviderConfigManager\.get_provider_ocr_config$"),
     mapping(
-        rust_span="supported_ocr_params", python_frame=r"AzureDocumentIntelligenceOCRConfig\.get_supported_ocr_params$"
+        span="python_supported_ocr_params",
+        python_frame=r"AzureDocumentIntelligenceOCRConfig\.get_supported_ocr_params$",
     ),
     mapping(rust_span="map_ocr_params", python_frame=r"AzureDocumentIntelligenceOCRConfig\.map_ocr_params$"),
     mapping(
@@ -321,7 +333,10 @@ DOCUMENT_INTELLIGENCE_COMMON_MAPPINGS: Final = (
     mapping(
         rust_span="transform_ocr_request", python_frame=r"AzureDocumentIntelligenceOCRConfig\.transform_ocr_request$"
     ),
-    mapping(rust_span="http_request", python_frame=r"AsyncHTTPHandler\.post$|HTTPHandler\.post$"),
+    mapping(
+        rust_span="http_request",
+        python_frame=r"AsyncHTTPHandler\.(?:post|get)$|HTTPHandler\.(?:post|get)$",
+    ),
     mapping(
         rust_span="poll_document_intelligence",
         python_frame=r"AzureDocumentIntelligenceOCRConfig\._poll_operation_(?:sync|async)$",
@@ -339,7 +354,6 @@ DOCUMENT_INTELLIGENCE_SYNC_MAPPINGS: Final = (
         span="python_provider_transform_response",
         python_frame=r"AzureDocumentIntelligenceOCRConfig\.transform_ocr_response$",
     ),
-    mapping(span="python_poll_http_request", python_frame=r"HTTPHandler\.get$"),
 )
 DOCUMENT_INTELLIGENCE_ASYNC_MAPPINGS: Final = (
     *DOCUMENT_INTELLIGENCE_COMMON_MAPPINGS,
@@ -349,7 +363,6 @@ DOCUMENT_INTELLIGENCE_ASYNC_MAPPINGS: Final = (
         span="python_provider_transform_response",
         python_frame=r"AzureDocumentIntelligenceOCRConfig\.async_transform_ocr_response$",
     ),
-    mapping(span="python_poll_http_request", python_frame=r"AsyncHTTPHandler\.get$"),
 )
 
 
@@ -374,7 +387,7 @@ TRACE_SUITE: Final = TraceSuite(
         TraceScenario(
             name="mistral-callback-failure",
             fixture=_mistral_callback_failure_fixture,
-            mappings=(*COMMON_MAPPINGS, FAILURE_CALLBACK_MAPPING),
+            mappings=(*COMMON_MAPPINGS, FAILURE_CALLBACK_SYNC_MAPPING),
             sync_mappings=CALLBACK_FAILURE_SYNC_MAPPINGS,
             async_mappings=CALLBACK_FAILURE_ASYNC_MAPPINGS,
         ),

@@ -1,10 +1,12 @@
-mod adapters;
+mod auth;
 pub mod client;
 mod codecs;
 mod document;
+mod endpoints;
 pub mod error;
-mod handler;
+mod execution;
 pub mod hooks;
+mod pipeline;
 mod prepare;
 mod registry;
 pub mod transformation;

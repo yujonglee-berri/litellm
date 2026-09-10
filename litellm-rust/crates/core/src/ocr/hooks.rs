@@ -116,6 +116,7 @@ impl CallLifecycleHooks<LiteLLMOcrRequest, LiteLLMOcrRequest, LiteLLMOcrResponse
 
     #[tracing::instrument(
         name = "success_callback",
+        parent = None,
         target = "litellm::function_trace",
         level = "trace",
         skip_all
@@ -131,6 +132,7 @@ impl CallLifecycleHooks<LiteLLMOcrRequest, LiteLLMOcrRequest, LiteLLMOcrResponse
 
     #[tracing::instrument(
         name = "failure_callback",
+        parent = None,
         target = "litellm::function_trace",
         level = "trace",
         skip_all

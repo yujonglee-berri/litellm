@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::hooks::{NoopOcrHooks, OcrHooks};
-use super::registry::{OcrAdapterKind, resolve_wire_adapter};
+use super::registry::{OcrPipelineKind, resolve_wire_pipeline};
 use crate::Error;
 use crate::auth::InputSource;
 use crate::constants::OCR_HTTP_TIMEOUT_SECS;
@@ -101,17 +101,23 @@ pub struct LiteLLMOcrRequest {
     pub litellm_call_id: Option<String>,
     pub optional_params: Map<String, Value>,
     pub input_sources: BTreeMap<String, InputSource>,
-    pub(crate) adapter: OcrAdapterKind,
+    pub(crate) pipeline: OcrPipelineKind,
 }
 
 impl LiteLLMOcrRequest {
+    #[tracing::instrument(
+        name = "ocr_provider_config",
+        target = "litellm::function_trace",
+        level = "trace",
+        skip_all
+    )]
     pub fn new(
         model: String,
         document: OcrDocument,
         custom_llm_provider: Option<&str>,
         optional_params: Map<String, Value>,
     ) -> Result<Self, Error> {
-        let (model, adapter_kind) = resolve_wire_adapter(&model, custom_llm_provider)?;
+        let (model, pipeline) = resolve_wire_pipeline(&model, custom_llm_provider)?;
 
         Ok(Self {
             model,
@@ -121,7 +127,7 @@ impl LiteLLMOcrRequest {
             litellm_call_id: None,
             optional_params,
             input_sources: BTreeMap::new(),
-            adapter: adapter_kind,
+            pipeline,
         })
     }
 

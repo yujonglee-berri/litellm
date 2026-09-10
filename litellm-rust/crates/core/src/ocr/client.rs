@@ -4,9 +4,9 @@ use std::time::Duration;
 use serde::de::DeserializeOwned;
 
 use super::error::OcrError;
-use super::handler::perform_ocr_request;
+use super::pipeline::perform_ocr_request;
 use super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse};
-use super::wire::{DecodedOcrResponse, decode_response};
+use super::wire::{DecodedOcrResponse, OcrWireRequest, decode_request, decode_response};
 use crate::Error;
 use crate::constants::OCR_CONNECT_TIMEOUT_SECS;
 use crate::error::TransportError;
@@ -27,14 +27,23 @@ impl OcrClient {
         })
     }
 
+    pub async fn perform(&self, request: LiteLLMOcrRequest) -> Result<LiteLLMOcrResponse, Error> {
+        perform_ocr_request(self, request).await
+    }
+
     #[tracing::instrument(
         name = "ocr",
         target = "litellm::function_trace",
         level = "trace",
         skip_all
     )]
-    pub async fn perform(&self, request: LiteLLMOcrRequest) -> Result<LiteLLMOcrResponse, Error> {
-        perform_ocr_request(self, request).await
+    pub async fn perform_wire(&self, request: OcrWireRequest) -> Result<LiteLLMOcrResponse, Error> {
+        let prepare = tracing::trace_span!(
+            target: "litellm::function_trace",
+            "prepare_ocr_call"
+        );
+        let request = prepare.in_scope(|| decode_request(request))?;
+        super::pipeline::perform_prepared_ocr_request(self, request, prepare).await
     }
 
     pub(crate) fn provider_http(&self) -> &reqwest::Client {
