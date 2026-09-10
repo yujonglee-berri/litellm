@@ -4,6 +4,7 @@ pub mod error;
 pub use error::AuthError;
 pub(crate) mod http;
 mod policy;
+mod request;
 mod secret;
 mod token;
 
@@ -54,3 +55,5 @@ pub use http::{CredentialPlacement, RequestAuth};
 pub use policy::{CredentialPlanKind, CredentialRule, ExistingHeaderBehavior, ProviderAuthPolicy};
 pub use secret::SecretValue;
 pub use token::{ResolvedCredential, TokenFuture, TokenProvider, TokenProviderHandle};
+
+pub use request::{Auth, AuthFuture, BearerTokenAuth, HeaderAuth, NoAuth};
