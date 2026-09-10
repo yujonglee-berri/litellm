@@ -18,11 +18,10 @@ pub(super) fn prepare_provider_request(
                     custom_llm_provider: provider,
                 })
         })
-        .ok_or_else(|| {
-            Error::InvalidProvider(
-                "unable to resolve custom_llm_provider for messages request".to_string(),
-            )
-        })?;
+        .unwrap_or(CustomLlmProvider {
+            model: request.model,
+            custom_llm_provider: crate::constants::ANTHROPIC_MESSAGES_PROVIDER,
+        });
     let model = provider_info.model.to_string();
     let provider = provider_info.custom_llm_provider;
 
@@ -33,9 +32,14 @@ pub(super) fn prepare_provider_request(
     let headers =
         validate_environment(config, request.extra_headers, request.api_key, &env_lookup)?;
 
-    let typed_request = serde_json::from_value(request.body).map_err(|err| {
-        Error::InvalidRequest(format!("invalid Anthropic messages request: {err}"))
-    })?;
+    let typed_request: super::types::AnthropicMessagesRequest =
+        serde_json::from_value(request.body).map_err(|err| {
+            Error::InvalidRequest(format!("invalid Anthropic messages request: {err}"))
+        })?;
+    let typed_request = super::types::AnthropicMessagesRequest {
+        model: model.clone(),
+        ..typed_request
+    };
     let transformed = config.transform_request(typed_request)?;
     let body = serde_json::to_value(transformed).map_err(|err| {
         Error::InvalidRequest(format!(

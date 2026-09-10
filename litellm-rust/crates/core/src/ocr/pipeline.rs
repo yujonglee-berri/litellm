@@ -2,15 +2,16 @@ use std::future::Future;
 
 use crate::Error;
 use crate::call_lifecycle::{CallLifecycle, CallLifecycleContext};
+use crate::operation::{CapabilitySupport, DeliveryMode, OperationPlan, Provider};
 
 use super::OcrClient;
-use super::auth::ResolveOcrAuth;
-use super::codecs::{DecodeOcrResponse, EncodeOcrRequest};
 use super::endpoints::ResolveOcrEndpoint;
 use super::execution::ExecuteOcr;
 use super::hooks::OcrLifecycleHooks;
-use super::registry::OcrPipelineKind;
+use super::registry::OcrPlan;
+use super::transformations::{OcrParameterInput, OcrTransformation};
 use super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse};
+use crate::auth::ResolveAuth;
 
 pub(crate) trait Ocr: Send + Sync {
     fn handle(
@@ -20,32 +21,38 @@ pub(crate) trait Ocr: Send + Sync {
 }
 
 #[derive(Clone)]
-pub(crate) struct OcrPipeline<A, E, C, X> {
+pub(crate) struct OcrPipeline<A, E, D, X> {
     client: OcrClient,
     auth: A,
     endpoint: E,
-    codec: C,
+    transformation: D,
     execution: X,
 }
 
-impl<A, E, C, X> OcrPipeline<A, E, C, X> {
-    pub(crate) fn new(client: OcrClient, auth: A, endpoint: E, codec: C, execution: X) -> Self {
+impl<A, E, D, X> OcrPipeline<A, E, D, X> {
+    pub(crate) fn new(
+        client: OcrClient,
+        auth: A,
+        endpoint: E,
+        transformation: D,
+        execution: X,
+    ) -> Self {
         Self {
             client,
             auth,
             endpoint,
-            codec,
+            transformation,
             execution,
         }
     }
 }
 
-impl<A, E, C, X> Ocr for OcrPipeline<A, E, C, X>
+impl<A, E, D, X> Ocr for OcrPipeline<A, E, D, X>
 where
-    A: ResolveOcrAuth,
-    E: ResolveOcrEndpoint<A::Context, C::Params>,
-    C: EncodeOcrRequest + DecodeOcrResponse,
-    X: ExecuteOcr<C, A::Authenticator, A::Context>,
+    A: ResolveAuth<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
+    E: ResolveOcrEndpoint<A::Context, D::Params>,
+    D: OcrTransformation,
+    X: ExecuteOcr<D, A::Authenticator, A::Context>,
 {
     async fn handle(&self, request: LiteLLMOcrRequest) -> Result<LiteLLMOcrResponse, Error> {
         let prepare = tracing::trace_span!(
@@ -56,12 +63,12 @@ where
     }
 }
 
-impl<A, E, C, X> OcrPipeline<A, E, C, X>
+impl<A, E, D, X> OcrPipeline<A, E, D, X>
 where
-    A: ResolveOcrAuth,
-    E: ResolveOcrEndpoint<A::Context, C::Params>,
-    C: EncodeOcrRequest + DecodeOcrResponse,
-    X: ExecuteOcr<C, A::Authenticator, A::Context>,
+    A: ResolveAuth<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
+    E: ResolveOcrEndpoint<A::Context, D::Params>,
+    D: OcrTransformation,
+    X: ExecuteOcr<D, A::Authenticator, A::Context>,
 {
     async fn handle_with_prepare(
         &self,
@@ -71,7 +78,7 @@ where
         let context = CallLifecycleContext::new(
             "ocr",
             request.model.clone(),
-            request.pipeline.provider().as_str(),
+            request.plan.provider().name(),
             request
                 .litellm_call_id
                 .clone()
@@ -89,12 +96,12 @@ where
     }
 }
 
-impl<A, E, C, X> OcrPipeline<A, E, C, X>
+impl<A, E, D, X> OcrPipeline<A, E, D, X>
 where
-    A: ResolveOcrAuth,
-    E: ResolveOcrEndpoint<A::Context, C::Params>,
-    C: EncodeOcrRequest + DecodeOcrResponse,
-    X: ExecuteOcr<C, A::Authenticator, A::Context>,
+    A: ResolveAuth<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
+    E: ResolveOcrEndpoint<A::Context, D::Params>,
+    D: OcrTransformation,
+    X: ExecuteOcr<D, A::Authenticator, A::Context>,
 {
     #[tracing::instrument(
         name = "execute_ocr_provider_call",
@@ -107,7 +114,19 @@ where
         request: &LiteLLMOcrRequest,
         prepare: &tracing::Span,
     ) -> Result<LiteLLMOcrResponse, Error> {
-        let params = prepare.in_scope(|| self.codec.params(request))?;
+        if self.transformation.wire_operation() != request.plan.wire_operation() {
+            return Err(Error::InvalidProvider(
+                "OCR transformation does not match the resolved wire operation".into(),
+            ));
+        }
+        if request.plan.delivery_support(DeliveryMode::Complete) != CapabilitySupport::Supported {
+            return Err(Error::Unsupported("OCR delivery mode"));
+        }
+        let params = prepare.in_scope(|| {
+            self.transformation.transform_parameters(OcrParameterInput {
+                optional_params: request.optional_params.clone(),
+            })
+        })?;
         let authentication = self.auth.resolve(request, &self.client).await?;
         let endpoint = self
             .endpoint
@@ -115,7 +134,7 @@ where
         self.execution
             .execute(
                 &self.client,
-                &self.codec,
+                &self.transformation,
                 request,
                 &params,
                 &endpoint,
@@ -147,14 +166,14 @@ async fn dispatch_ocr_request(
     prepare: Option<tracing::Span>,
 ) -> Result<LiteLLMOcrResponse, Error> {
     macro_rules! execute_selected_pipeline {
-        ($( $variant:ident, $auth:expr, $endpoint:expr, $codec:expr, $execution:expr, $provider:ident; )+) => {
-            match request.pipeline {
-                $( OcrPipelineKind::$variant => {
+        ($( $variant:ident, $auth:expr, $endpoint:expr, $transformation:expr, $execution:expr, $provider:ident; )+) => {
+            match request.plan {
+                $( OcrPlan::$variant => {
                     let pipeline = OcrPipeline::new(
                         client.clone(),
                         $auth,
                         $endpoint,
-                        $codec,
+                        $transformation,
                         $execution,
                     );
                     match prepare {

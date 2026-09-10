@@ -1,11 +1,13 @@
-use std::future::Future;
 use std::sync::OnceLock;
 
 use reqwest::header::HeaderName;
 
 use crate::auth::azure::{AzureAuthInputs, AzureAuthService};
 use crate::auth::error::AuthConfigurationError;
-use crate::auth::{Auth, ExistingHeaderBehavior, HeaderAuth, InputSource, SecretValue, Sourced};
+use crate::auth::{
+    ExistingHeaderBehavior, HeaderAuth, InputSource, ResolveAuth, ResolvedAuth, SecretValue,
+    Sourced,
+};
 use crate::constants::AZURE_DI_SUBSCRIPTION_HEADER;
 use crate::ocr::OcrClient;
 use crate::ocr::error::OcrError;
@@ -18,35 +20,19 @@ const AZURE_DI_API_KEY_ENV: &str = "AZURE_DOCUMENT_INTELLIGENCE_API_KEY";
 const MISTRAL_API_KEY_ENV: &str = "MISTRAL_API_KEY";
 const REDUCTO_API_KEY_ENV: &str = "REDUCTO_API_KEY";
 
-pub(crate) struct ResolvedOcrAuth<A, C> {
-    pub authenticator: A,
-    pub headers: Vec<(String, String)>,
-    pub context: C,
-}
-
-pub(crate) trait ResolveOcrAuth: Send + Sync {
-    type Authenticator: Auth;
-    type Context: Send + Sync;
-
-    fn resolve(
-        &self,
-        request: &LiteLLMOcrRequest,
-        services: &OcrClient,
-    ) -> impl Future<Output = Result<ResolvedOcrAuth<Self::Authenticator, Self::Context>, OcrError>> + Send;
-}
-
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct MistralAuth;
 
-impl ResolveOcrAuth for MistralAuth {
+impl ResolveAuth<LiteLLMOcrRequest, OcrClient> for MistralAuth {
     type Authenticator = HeaderAuth;
     type Context = ();
+    type Error = OcrError;
 
     async fn resolve(
         &self,
         request: &LiteLLMOcrRequest,
         _services: &OcrClient,
-    ) -> Result<ResolvedOcrAuth<HeaderAuth, ()>, OcrError> {
+    ) -> Result<ResolvedAuth<HeaderAuth, ()>, OcrError> {
         resolve_bearer(
             &request.connection,
             MISTRAL_API_KEY_ENV,
@@ -60,15 +46,16 @@ impl ResolveOcrAuth for MistralAuth {
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ReductoAuth;
 
-impl ResolveOcrAuth for ReductoAuth {
+impl ResolveAuth<LiteLLMOcrRequest, OcrClient> for ReductoAuth {
     type Authenticator = HeaderAuth;
     type Context = ();
+    type Error = OcrError;
 
     async fn resolve(
         &self,
         request: &LiteLLMOcrRequest,
         _services: &OcrClient,
-    ) -> Result<ResolvedOcrAuth<HeaderAuth, ()>, OcrError> {
+    ) -> Result<ResolvedAuth<HeaderAuth, ()>, OcrError> {
         resolve_bearer(
             &request.connection,
             REDUCTO_API_KEY_ENV,
@@ -83,9 +70,10 @@ pub(crate) enum AzureOcrAuth {
     DocumentIntelligence,
 }
 
-impl ResolveOcrAuth for AzureOcrAuth {
+impl ResolveAuth<LiteLLMOcrRequest, OcrClient> for AzureOcrAuth {
     type Authenticator = HeaderAuth;
     type Context = ();
+    type Error = OcrError;
 
     #[tracing::instrument(
         name = "validate_environment",
@@ -97,7 +85,7 @@ impl ResolveOcrAuth for AzureOcrAuth {
         &self,
         request: &LiteLLMOcrRequest,
         _services: &OcrClient,
-    ) -> Result<ResolvedOcrAuth<HeaderAuth, ()>, OcrError> {
+    ) -> Result<ResolvedAuth<HeaderAuth, ()>, OcrError> {
         let config = AzureAuthInputs::from_sourced_optional_params(
             &request.optional_params,
             &request.input_sources,
@@ -112,7 +100,7 @@ impl AzureOcrAuth {
         self,
         connection: &OcrConnection,
         config: &AzureAuthInputs,
-    ) -> Result<ResolvedOcrAuth<HeaderAuth, ()>, OcrError> {
+    ) -> Result<ResolvedAuth<HeaderAuth, ()>, OcrError> {
         if self.has_existing_credential(&connection.extra_headers) {
             validate_destination(connection, connection.extra_headers_source)?;
             return Ok(resolved_auth(connection, empty_auth()?));
@@ -172,7 +160,7 @@ fn resolve_bearer(
     connection: &OcrConnection,
     env_name: &str,
     missing: Error,
-) -> Result<ResolvedOcrAuth<HeaderAuth, ()>, OcrError> {
+) -> Result<ResolvedAuth<HeaderAuth, ()>, OcrError> {
     if crate::http_utils::has_header(&connection.extra_headers, "authorization") {
         return Ok(resolved_auth(connection, empty_auth()?));
     }
@@ -194,8 +182,8 @@ fn resolve_bearer(
 fn resolved_auth(
     connection: &OcrConnection,
     authenticator: HeaderAuth,
-) -> ResolvedOcrAuth<HeaderAuth, ()> {
-    ResolvedOcrAuth {
+) -> ResolvedAuth<HeaderAuth, ()> {
+    ResolvedAuth {
         authenticator,
         headers: connection.extra_headers.clone(),
         context: (),

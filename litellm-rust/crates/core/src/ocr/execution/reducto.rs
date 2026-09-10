@@ -1,35 +1,35 @@
 use crate::auth::Auth;
 
 use super::super::OcrClient;
-use super::super::auth::ResolvedOcrAuth;
-use super::super::codecs::reducto::ReductoUploadResponse;
-use super::super::codecs::{DecodeOcrResponse, EncodeOcrRequest};
 use super::super::document::InlineDocument;
 use super::super::endpoints::complete_reducto_url;
 use super::super::error::{OcrError, OcrRequestError, OcrResponseError};
 use super::super::prepare::{build_http_request, guardrail_document};
+use super::super::transformations::reducto::ReductoUploadResponse;
+use super::super::transformations::{OcrTransformRequest, OcrTransformation};
 use super::super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse, OcrConnection, OcrDocument};
 use super::{ExecuteOcr, finish, send_json};
+use crate::auth::ResolvedAuth;
 
 const REDUCTO_ID_PREFIX: &str = "reducto://";
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ReductoExecution;
 
-impl<C, A, AuthContext> ExecuteOcr<C, A, AuthContext> for ReductoExecution
+impl<D, A, AuthContext> ExecuteOcr<D, A, AuthContext> for ReductoExecution
 where
-    C: EncodeOcrRequest + DecodeOcrResponse,
+    D: OcrTransformation,
     A: Auth,
     AuthContext: Send + Sync,
 {
     async fn execute(
         &self,
         client: &OcrClient,
-        codec: &C,
+        transformation: &D,
         request: &LiteLLMOcrRequest,
-        params: &C::Params,
+        params: &D::Params,
         endpoint: &str,
-        authentication: &ResolvedOcrAuth<A, AuthContext>,
+        authentication: &ResolvedAuth<A, AuthContext>,
     ) -> Result<LiteLLMOcrResponse, OcrError> {
         let document = guardrail_document(request, endpoint).await?;
         let document = prepare_document(
@@ -40,17 +40,21 @@ where
             &authentication.authenticator,
         )
         .await?;
-        let body = codec.encode(&request.model, document, params)?;
+        let body = transformation.transform_request(OcrTransformRequest {
+            model: request.model.clone(),
+            document,
+            params: params.clone(),
+        })?;
         let provider_request =
             build_http_request(client, request, endpoint, &authentication.headers, &body)?;
-        let decoded = send_json::<C::WireResponse, A>(
+        let decoded = send_json::<D::WireResponse, A>(
             client,
             request,
             provider_request,
             &authentication.authenticator,
         )
         .await?;
-        finish(codec, request, decoded)
+        finish(transformation, request, decoded)
     }
 }
 

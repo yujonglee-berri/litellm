@@ -1,6 +1,6 @@
 use crate::constants::MISTRAL_OCR_API_BASE;
-use crate::ocr::codecs::mistral::MistralOcrParams;
 use crate::ocr::error::{OcrError, OcrRequestError};
+use crate::ocr::transformations::mistral::MistralOcrParams;
 use crate::ocr::types::LiteLLMOcrRequest;
 use crate::url_utils::ApiUrl;
 

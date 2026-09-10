@@ -1,19 +1,7 @@
-use crate::Error;
 use serde_json::{Map, Value};
 
-use super::types::{
-    ChatCompletionsResponse, ChatMessage, ChatMessageContent, ProviderChatRequestData,
-    ProviderChatResponseData,
-};
-
-/// How the upstream call is authenticated. API-key strategies are resolved in
-/// `prepare`; SigV4 needs the serialized body, so the handler signs it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ChatCompletionsAuth {
-    Header { name: &'static str, value: String },
-    Bearer { token: String },
-    AwsSigV4 { region: String },
-}
+use super::types::{ChatMessage, ChatMessageContent};
+use crate::operation::DeliveryMode;
 
 /// Why a request cannot be served by the Rust path.
 ///
@@ -27,96 +15,32 @@ pub struct Unsupported(pub &'static str);
 
 pub const STREAM_PARAM: &str = "stream";
 
-/// Message fields that carry no meaning for the upstream body, so their
-/// presence does not make a request untranslatable.
-const IGNORABLE_MESSAGE_FIELDS: &[&str] = &["name"];
-
-pub trait ChatCompletionsProviderConfig: Sync {
-    fn complete_url(
-        &self,
-        api_base: Option<&str>,
-        model: &str,
-        optional_params: &Map<String, Value>,
-        env_lookup: &dyn Fn(&str) -> Option<String>,
-    ) -> Result<String, Error>;
-
-    fn auth(
-        &self,
-        api_key: Option<&str>,
-        model: &str,
-        optional_params: &Map<String, Value>,
-        env_lookup: &dyn Fn(&str) -> Option<String>,
-    ) -> Result<ChatCompletionsAuth, Error>;
-
-    fn default_headers(&self) -> &'static [(&'static str, &'static str)] {
-        &[("content-type", "application/json")]
-    }
-
-    /// Whether an auth header the caller already supplied is the credential this
-    /// request should authenticate with, so the resolved one is not applied.
-    ///
-    /// Defaults to false: the deployment's credential outranks anything
-    /// forwarded, which is what every provider wants for its own auth header.
-    /// A provider overrides this only for a scheme it hands off to entirely.
-    fn defers_to_forwarded_auth(&self, _headers: &[(String, String)]) -> bool {
-        false
-    }
-
-    /// Supported OpenAI parameter names paired with their provider names.
-    fn supported_openai_params(&self) -> &'static [(&'static str, &'static str)];
-
-    /// Parameters consumed as call configuration (credentials, endpoints)
-    /// rather than placed in the body. Accepted, never serialized.
-    fn config_params(&self) -> &'static [&'static str] {
-        &[]
-    }
-
-    fn unsupported_reason(
-        &self,
-        messages: &[ChatMessage],
-        optional_params: &Map<String, Value>,
-    ) -> Option<Unsupported> {
-        unsupported_param(
-            self.supported_openai_params(),
-            self.config_params(),
-            optional_params,
-        )
-        .or_else(|| messages.iter().find_map(unsupported_message))
-    }
-
-    fn transform_request(
-        &self,
-        model: &str,
-        messages: Vec<ChatMessage>,
-        optional_params: Map<String, Value>,
-    ) -> Result<ProviderChatRequestData, Error>;
-
-    fn transform_response(
-        &self,
-        model: &str,
-        response: ProviderChatResponseData,
-    ) -> Result<ChatCompletionsResponse, Error>;
-}
-
-pub fn unsupported_param(
-    supported: &'static [(&'static str, &'static str)],
-    config: &'static [&'static str],
-    optional_params: &Map<String, Value>,
-) -> Option<Unsupported> {
+pub fn delivery_mode(optional_params: &Map<String, Value>) -> DeliveryMode {
     if optional_params
         .get(STREAM_PARAM)
         .and_then(Value::as_bool)
         .unwrap_or(false)
     {
-        return Some(Unsupported("streaming"));
+        DeliveryMode::Stream
+    } else {
+        DeliveryMode::Complete
     }
+}
+
+/// Message fields that carry no meaning for the upstream body, so their
+/// presence does not make a request untranslatable.
+const IGNORABLE_MESSAGE_FIELDS: &[&str] = &["name"];
+
+pub fn unsupported_param(
+    supported: &'static [&'static str],
+    config: &'static [&'static str],
+    optional_params: &Map<String, Value>,
+) -> Option<Unsupported> {
     optional_params
         .keys()
         .any(|key| {
             key != STREAM_PARAM
-                && !supported
-                    .iter()
-                    .any(|(_, provider_name)| *provider_name == key)
+                && !supported.contains(&key.as_str())
                 && !config.contains(&key.as_str())
         })
         .then_some(Unsupported("unrecognized request parameter"))

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use litellm_core::router::Deployment;
+use litellm_gateway_router::Deployment;
 use pyo3::prelude::*;
 
 use crate::Error;

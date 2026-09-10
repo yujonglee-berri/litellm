@@ -1,7 +1,7 @@
-//! Enforcement: the litellm-rust workspace has exactly five crates.
+//! Enforcement: the litellm-rust workspace has exactly thirteen crates.
 //!
 //! `core` (the Rust SDK), `config` (the config-loading boundary),
-//! `ai-gateway` (the HTTP/WebSocket host),
+//! `gateway-inference` and `gateway-management` (the HTTP/WebSocket hosts),
 //! `python-interop` (domain-neutral PyO3 primitives), and `python-bridge` (the
 //! PyO3 cdylib). Adding or removing a crate must be a
 //! deliberate act: this test fails until the allowlist here is updated, forcing
@@ -19,18 +19,34 @@ use std::path::{Path, PathBuf};
 /// The one true crate set. Update BOTH this and `litellm-rust/AGENTS.md` when the
 /// workspace legitimately gains or loses a crate.
 const EXPECTED_MEMBERS: &[&str] = &[
+    "crates/auth",
+    "crates/auth-azure",
+    "crates/auth-aws",
+    "crates/auth-google",
+    "crates/auth-oauth",
     "crates/core",
     "crates/config",
-    "crates/ai-gateway",
+    "crates/gateway-inference",
+    "crates/gateway-management",
+    "crates/gateway-auth",
+    "crates/gateway-router",
     "crates/python-interop",
     "crates/python-bridge",
 ];
 
 /// The crate subdirectory names that must exist under `crates/`.
 const EXPECTED_CRATE_DIRS: &[&str] = &[
+    "auth",
+    "auth-azure",
+    "auth-aws",
+    "auth-google",
+    "auth-oauth",
     "core",
     "config",
-    "ai-gateway",
+    "gateway-inference",
+    "gateway-management",
+    "gateway-auth",
+    "gateway-router",
     "python-interop",
     "python-bridge",
 ];

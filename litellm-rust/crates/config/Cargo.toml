@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-litellm-core.workspace = true
+litellm-gateway-router.workspace = true
 pyo3 = { workspace = true, features = ["auto-initialize"], optional = true }
 serde_json.workspace = true
 thiserror.workspace = true

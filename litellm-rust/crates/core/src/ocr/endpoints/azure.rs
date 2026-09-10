@@ -1,9 +1,9 @@
 use crate::Error;
 use crate::constants::{AZURE_AI_OCR_PATH, AZURE_DI_API_VERSION};
-use crate::ocr::codecs::document_intelligence::DocumentIntelligenceParams;
-use crate::ocr::codecs::mistral::MistralOcrParams;
 use crate::ocr::error::{OcrError, OcrRequestError};
 use crate::ocr::prepare::credential_env;
+use crate::ocr::transformations::document_intelligence::DocumentIntelligenceParams;
+use crate::ocr::transformations::mistral::MistralOcrParams;
 use crate::ocr::types::LiteLLMOcrRequest;
 use crate::url_utils::ApiUrl;
 

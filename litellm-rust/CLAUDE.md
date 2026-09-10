@@ -23,10 +23,14 @@ the base when behavior is genuinely different, and say so explicitly in the PR.
 
 ## Crates (see AGENTS.md)
 
-`litellm-core` **is** the LiteLLM SDK in Rust: it makes the LLM call.
-`litellm-config` is the config-loading boundary and returns resolved core types.
-`litellm-ai-gateway` is an HTTP/WebSocket server in front of it, and
-`litellm-python-bridge` exposes it to the Python SDK. `litellm-python-interop`
+`litellm-auth` defines operation-independent outbound-auth contracts. Mechanism crates (`litellm-auth-aws`, `litellm-auth-azure`, `litellm-auth-google`, and `litellm-auth-oauth`) isolate cloud SDK and exchange dependencies. `litellm-core` binds those mechanisms to provider/wire-operation plans and **is** the LiteLLM SDK in Rust: it makes the LLM call.
+`litellm-config` is the config-loading boundary and returns resolved gateway-router types.
+`litellm-gateway-inference` is the data-plane HTTP/WebSocket server and
+`litellm-gateway-management` is the control-plane server scaffold. The inference
+gateway must not register management APIs. The management gateway must not
+register inference APIs. `litellm-gateway-router` owns gateway deployment
+selection and routing policy. `litellm-python-bridge` exposes core to the Python SDK.
+`litellm-python-interop`
 holds domain-neutral PyO3 primitives shared by Python-facing Rust code. A crate
 is a layer or shared foundation, not a route; add modules, not crates.
 
@@ -45,7 +49,7 @@ Route-level Rust structure mirrors LiteLLM's Python responsibilities:
 - `core/src/providers/<provider>/<route>/transformation.rs` owns the
   provider-specific transform. For Anthropic Messages, this means
   `core/src/providers/anthropic/messages/transformation.rs`.
-- Handlers live in `core`, never in a host. `ai-gateway` must not contain a
+- Handlers live in `core`, never in a host. `gateway-inference` must not contain a
   route handler that talks to a provider; its axum route reads the HTTP request,
   picks a deployment, and calls the `core` entrypoint. `python-bridge` marshals
   Python objects and calls the same entrypoint.
@@ -62,7 +66,7 @@ their I/O logger; hosts must not own callback orchestration.
 Allowed in `core`:
 - The public entrypoint for a top-level LiteLLM call
 - Request/response transforms and stream chunk normalization
-- Provider resolution, auth header construction, and URL building
+- Provider resolution, auth-plan selection, and URL building
 - The provider HTTP call itself, through a shared reused client with connect and
   request timeouts
 - Shared data types and validation errors
@@ -81,7 +85,7 @@ Env reads in `core` are limited to credential fallback inside a route's
 no key is passed. Everything else config-shaped is resolved by the host and
 passed in.
 
-Routes still hosted in `ai-gateway` (`ocr`, `audio_transcription`, `realtime`)
+Routes still hosted in `gateway-inference` (`ocr`, `audio_transcription`, `realtime`)
 predate this rule and are being moved into `core` route modules; do not add new
 ones there, and prefer moving one when you touch it.
 
@@ -121,7 +125,7 @@ the first PR:
 ## Network I/O Rules
 
 These rules apply to every module that executes network I/O, whether it is a
-`core` route handler or a host such as `ai-gateway`:
+`core` route handler or a host such as `gateway-inference`:
 
 - Set connect and full-request timeouts. No unbounded waits.
 - Reuse HTTP clients; do not construct clients per request.
@@ -177,12 +181,14 @@ cd litellm-rust
 cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy -p litellm-core --all-targets --features bedrock-auth -- -D warnings
-# the ai-gateway binary + server code is behind the `server` feature
-cargo clippy -p litellm-ai-gateway --all-targets --all-features -- -D warnings
+# the gateway binaries + server code are behind the `server` feature
+cargo clippy -p litellm-gateway-inference --all-targets --all-features -- -D warnings
+cargo clippy -p litellm-gateway-management --all-targets --all-features -- -D warnings
 cargo test --workspace
 cargo test -p litellm-core --features bedrock-auth
 # the `auth`, `routes`, `state` and `realtime` tests only exist under `server`
-cargo test -p litellm-ai-gateway --features server
+cargo test -p litellm-gateway-inference --features server
+cargo test -p litellm-gateway-management --features server
 ```
 
 When a Rust path is exposed through Python, add Python parity tests that compare

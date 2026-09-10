@@ -1,9 +1,18 @@
+use std::pin::Pin;
 use std::time::Duration;
 
+use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::transformation::{ChatCompletionsAuth, ChatCompletionsProviderConfig};
+use super::registry::ChatCompletionsPlan;
+use crate::auth::AuthHandle;
+use crate::operation::{Operation, OperationKind, StreamingOperation};
+
+pub struct ChatCompletionsOperation;
+
+pub type ChatCompletionsStream =
+    Pin<Box<dyn Stream<Item = Result<ChatCompletionsStreamEvent, crate::Error>> + Send>>;
 
 /// A `/chat/completions` call as it crosses into the core.
 ///
@@ -24,7 +33,7 @@ pub struct ChatCompletionsRequest<'a> {
 
 pub(super) struct ResolvedChatCompletionsRequest<'a> {
     pub(super) model: String,
-    pub(super) config: &'static dyn ChatCompletionsProviderConfig,
+    pub(super) plan: ChatCompletionsPlan,
     pub(super) messages: Vec<ChatMessage>,
     pub(super) optional_params: Map<String, Value>,
     pub(super) api_key: Option<&'a str>,
@@ -35,26 +44,90 @@ pub(super) struct ResolvedChatCompletionsRequest<'a> {
 
 pub(super) struct ProviderChatCompletionsRequest {
     pub(super) model: String,
-    pub(super) config: &'static dyn ChatCompletionsProviderConfig,
+    pub(super) plan: ChatCompletionsPlan,
     pub(super) url: String,
     pub(super) body: Value,
     pub(super) upstream_headers: Vec<(String, String)>,
-    pub(super) auth: ChatCompletionsAuth,
-    #[cfg_attr(not(feature = "bedrock-auth"), allow(dead_code))]
-    pub(super) optional_params: Map<String, Value>,
+    pub(super) auth: AuthHandle,
     pub(super) timeout: Option<Duration>,
 }
 
-/// The provider-shaped request body a config produces. Named rather than a bare
+impl Operation for ChatCompletionsOperation {
+    type Request<'a> = ChatCompletionsInput;
+    type Response = ChatCompletionsResponse;
+
+    const KIND: OperationKind = OperationKind::ChatCompletions;
+}
+
+impl StreamingOperation for ChatCompletionsOperation {
+    type StreamEvent = ChatCompletionsStreamEvent;
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ChatCompletionsInput {
+    pub model: String,
+    pub messages: Vec<ChatMessage>,
+    pub optional_params: Map<String, Value>,
+}
+
+pub(crate) struct ChatCompletionsTransformResponse {
+    #[cfg_attr(not(feature = "bedrock-auth"), allow(dead_code))]
+    pub(crate) model: String,
+    pub(crate) response: ProviderChatResponseData,
+}
+
+/// The provider-shaped request body a transformation produces. Named rather than a bare
 /// `Value` so the transform contract stays a typed one, mirroring
 /// [`crate::audio_transcription::types::AudioTranscriptionRequestData`].
 pub struct ProviderChatRequestData {
     pub body: Value,
 }
 
-/// The raw provider response body handed back to a config for normalization.
+/// The raw provider response body handed to a transformation for normalization.
 pub struct ProviderChatResponseData {
     pub body: Value,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ChatCompletionsStreamEvent {
+    TextDelta {
+        choice_index: u64,
+        text: String,
+    },
+    ReasoningDelta {
+        choice_index: u64,
+        text: String,
+    },
+    ReasoningSignatureDelta {
+        choice_index: u64,
+        signature: String,
+    },
+    ToolCallStart {
+        choice_index: u64,
+        tool_index: u64,
+        id: String,
+        name: String,
+    },
+    ToolCallDelta {
+        choice_index: u64,
+        tool_index: u64,
+        arguments: String,
+    },
+    Usage {
+        usage: ChatCompletionsUsage,
+    },
+    Finish {
+        choice_index: u64,
+        reason: String,
+    },
+    Error {
+        message: String,
+    },
+    Unknown {
+        event: String,
+        data: Value,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

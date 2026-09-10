@@ -1,0 +1,33 @@
+pub const DEFAULT_HOST: &str = "127.0.0.1";
+pub const DEFAULT_PORT: u16 = 4002;
+
+pub const PORTING_MANAGEMENT_ROUTES: &[&str] = &[
+    "/key/generate",
+    "/key/update",
+    "/key/delete",
+    "/key/info",
+    "/key/list",
+    "/user/new",
+    "/user/update",
+    "/user/delete",
+    "/user/info",
+    "/user/list",
+    "/team/new",
+    "/team/update",
+    "/team/delete",
+    "/team/info",
+    "/team/list",
+    "/organization/new",
+    "/organization/update",
+    "/organization/delete",
+    "/organization/info",
+    "/organization/list",
+    "/model/new",
+    "/model/update",
+    "/model/delete",
+    "/model/info",
+    "/v1/mcp/server",
+    "/v1/mcp/server/*path",
+    "/v1/agents",
+    "/v1/agents/*path",
+];

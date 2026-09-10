@@ -142,7 +142,7 @@ async fn rejects_invalid_document_sources_before_network(#[case] source: &str) {
 
 #[test]
 fn response_normalization_groups_blocks_and_distinguishes_null_result() {
-    use crate::ocr::codecs::reducto::{ReductoResponse, transform_ocr_response};
+    use crate::ocr::transformations::reducto::{ReductoResponse, transform_ocr_response};
 
     let raw = json!({"usage":{"num_pages":"2","credits":"3"},"result":{"chunks":[
         {"blocks":[{"content":"B","bbox":{"page":2},"kind":"table"}]},

@@ -11,6 +11,7 @@ const FINISH_REASONS: &[(&str, &str)] = &[
     ("end_turn", "stop"),
     ("stop_sequence", "stop"),
     ("max_tokens", "length"),
+    ("tool_use", "tool_calls"),
     ("refusal", "content_filter"),
     ("compaction", "length"),
     ("guardrail_intervened", "content_filter"),
@@ -63,6 +64,7 @@ mod tests {
         assert_eq!(finish_reason_for("end_turn"), "stop");
         assert_eq!(finish_reason_for("stop_sequence"), "stop");
         assert_eq!(finish_reason_for("max_tokens"), "length");
+        assert_eq!(finish_reason_for("tool_use"), "tool_calls");
         assert_eq!(finish_reason_for("refusal"), "content_filter");
         assert_eq!(finish_reason_for("guardrail_intervened"), "content_filter");
         // Converse emits these two, and folding them into `stop` would report a

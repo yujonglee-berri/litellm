@@ -1,8 +1,16 @@
 [workspace]
 members = [
+    "crates/auth",
+    "crates/auth-azure",
+    "crates/auth-aws",
+    "crates/auth-google",
+    "crates/auth-oauth",
     "crates/core",
     "crates/config",
-    "crates/ai-gateway",
+    "crates/gateway-inference",
+    "crates/gateway-management",
+    "crates/gateway-auth",
+    "crates/gateway-router",
     "crates/python-interop",
     "crates/python-bridge",
 ]
@@ -15,12 +23,21 @@ license = "MIT"
 repository = "https://github.com/BerriAI/litellm"
 
 [workspace.dependencies]
+litellm-core = { path = "crates/core" }
+litellm-auth = { path = "crates/auth" }
+litellm-auth-azure = { path = "crates/auth-azure" }
+litellm-auth-aws = { path = "crates/auth-aws" }
+litellm-auth-google = { path = "crates/auth-google" }
+litellm-auth-oauth = { path = "crates/auth-oauth" }
+litellm-config = { path = "crates/config" }
+litellm-gateway-inference = { path = "crates/gateway-inference", default-features = false }
+litellm-gateway-management = { path = "crates/gateway-management", default-features = false }
+litellm-gateway-auth = { path = "crates/gateway-auth", default-features = false }
+litellm-gateway-router = { path = "crates/gateway-router" }
+litellm-python-interop = { path = "crates/python-interop" }
+
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
-litellm-core = { path = "crates/core" }
-litellm-config = { path = "crates/config" }
-litellm-ai-gateway = { path = "crates/ai-gateway", default-features = false }
-litellm-python-interop = { path = "crates/python-interop" }
 axum = "0.7"
 pyo3 = "0.29.2"
 pyo3-async-runtimes = { version = "0.29.0", features = ["tokio-runtime"] }

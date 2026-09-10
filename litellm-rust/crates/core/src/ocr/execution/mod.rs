@@ -6,54 +6,59 @@ use std::future::Future;
 use crate::auth::Auth;
 
 use super::OcrClient;
-use super::auth::ResolvedOcrAuth;
-use super::codecs::document_intelligence::DocumentIntelligenceCodec;
-use super::codecs::mistral::{MistralOcrCodec, MistralOcrRequest};
-use super::codecs::{DecodeOcrResponse, EncodeOcrRequest};
 use super::document::{inline_remote_document, validate_inline_document};
 use super::error::OcrError;
 use super::prepare::transform_request_body;
+use super::transformations::document_intelligence::DocumentIntelligenceTransformation;
+use super::transformations::mistral::{MistralOcrRequest, MistralOcrTransformation};
+use super::transformations::{OcrTransformRequest, OcrTransformResponse, OcrTransformation};
 use super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse, OcrResponseFormat};
 use super::wire::DecodedOcrResponse;
+use crate::auth::ResolvedAuth;
+use crate::operation::RequestTransformation;
 
 pub(crate) use reducto::ReductoExecution;
 
-pub(crate) trait ExecuteOcr<C, A, AuthContext>: Send + Sync
+pub(crate) trait ExecuteOcr<D, A, AuthContext>: Send + Sync
 where
-    C: EncodeOcrRequest + DecodeOcrResponse,
+    D: OcrTransformation,
     A: Auth,
     AuthContext: Send + Sync,
 {
     fn execute(
         &self,
         client: &OcrClient,
-        codec: &C,
+        transformation: &D,
         request: &LiteLLMOcrRequest,
-        params: &C::Params,
+        params: &D::Params,
         endpoint: &str,
-        authentication: &ResolvedOcrAuth<A, AuthContext>,
+        authentication: &ResolvedAuth<A, AuthContext>,
     ) -> impl Future<Output = Result<LiteLLMOcrResponse, OcrError>> + Send;
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct JsonExecution;
 
-impl<C, A, AuthContext> ExecuteOcr<C, A, AuthContext> for JsonExecution
+impl<D, A, AuthContext> ExecuteOcr<D, A, AuthContext> for JsonExecution
 where
-    C: EncodeOcrRequest + DecodeOcrResponse,
+    D: OcrTransformation,
     A: Auth,
     AuthContext: Send + Sync,
 {
     async fn execute(
         &self,
         client: &OcrClient,
-        codec: &C,
+        transformation: &D,
         request: &LiteLLMOcrRequest,
-        params: &C::Params,
+        params: &D::Params,
         endpoint: &str,
-        authentication: &ResolvedOcrAuth<A, AuthContext>,
+        authentication: &ResolvedAuth<A, AuthContext>,
     ) -> Result<LiteLLMOcrResponse, OcrError> {
-        let body = codec.encode(&request.model, request.document.clone(), params)?;
+        let body = transformation.transform_request(OcrTransformRequest {
+            model: request.model.clone(),
+            document: request.document.clone(),
+            params: params.clone(),
+        })?;
         let provider_request = transform_request_body(
             client,
             request,
@@ -63,21 +68,21 @@ where
             |_| Ok(()),
         )
         .await?;
-        let decoded = send_json::<C::WireResponse, A>(
+        let decoded = send_json::<D::WireResponse, A>(
             client,
             request,
             provider_request,
             &authentication.authenticator,
         )
         .await?;
-        finish(codec, request, decoded)
+        finish(transformation, request, decoded)
     }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct InlineJsonExecution;
 
-impl<A, AuthContext> ExecuteOcr<MistralOcrCodec, A, AuthContext> for InlineJsonExecution
+impl<A, AuthContext> ExecuteOcr<MistralOcrTransformation, A, AuthContext> for InlineJsonExecution
 where
     A: Auth,
     AuthContext: Send + Sync,
@@ -85,11 +90,11 @@ where
     async fn execute(
         &self,
         client: &OcrClient,
-        codec: &MistralOcrCodec,
+        transformation: &MistralOcrTransformation,
         request: &LiteLLMOcrRequest,
-        params: &<MistralOcrCodec as EncodeOcrRequest>::Params,
+        params: &<MistralOcrTransformation as OcrTransformation>::Params,
         endpoint: &str,
-        authentication: &ResolvedOcrAuth<A, AuthContext>,
+        authentication: &ResolvedAuth<A, AuthContext>,
     ) -> Result<LiteLLMOcrResponse, OcrError> {
         let document = inline_remote_document(
             client.document_fetcher(),
@@ -97,7 +102,11 @@ where
             &request.connection,
         )
         .await?;
-        let body = codec.encode(&request.model, document, params)?;
+        let body = transformation.transform_request(OcrTransformRequest {
+            model: request.model.clone(),
+            document,
+            params: params.clone(),
+        })?;
         let provider_request = transform_request_body(
             client,
             request,
@@ -107,21 +116,22 @@ where
             validate_mistral_document,
         )
         .await?;
-        let decoded = send_json::<<MistralOcrCodec as DecodeOcrResponse>::WireResponse, A>(
-            client,
-            request,
-            provider_request,
-            &authentication.authenticator,
-        )
-        .await?;
-        finish(codec, request, decoded)
+        let decoded =
+            send_json::<<MistralOcrTransformation as OcrTransformation>::WireResponse, A>(
+                client,
+                request,
+                provider_request,
+                &authentication.authenticator,
+            )
+            .await?;
+        finish(transformation, request, decoded)
     }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct DocumentIntelligenceExecution;
 
-impl<A, AuthContext> ExecuteOcr<DocumentIntelligenceCodec, A, AuthContext>
+impl<A, AuthContext> ExecuteOcr<DocumentIntelligenceTransformation, A, AuthContext>
     for DocumentIntelligenceExecution
 where
     A: Auth,
@@ -130,13 +140,17 @@ where
     async fn execute(
         &self,
         client: &OcrClient,
-        codec: &DocumentIntelligenceCodec,
+        transformation: &DocumentIntelligenceTransformation,
         request: &LiteLLMOcrRequest,
-        params: &<DocumentIntelligenceCodec as EncodeOcrRequest>::Params,
+        params: &<DocumentIntelligenceTransformation as OcrTransformation>::Params,
         endpoint: &str,
-        authentication: &ResolvedOcrAuth<A, AuthContext>,
+        authentication: &ResolvedAuth<A, AuthContext>,
     ) -> Result<LiteLLMOcrResponse, OcrError> {
-        let body = codec.encode(&request.model, request.document.clone(), params)?;
+        let body = transformation.transform_request(OcrTransformRequest {
+            model: request.model.clone(),
+            document: request.document.clone(),
+            params: params.clone(),
+        })?;
         let provider_request = transform_request_body(
             client,
             request,
@@ -157,7 +171,7 @@ where
             request.response_format()? == OcrResponseFormat::Native,
         )
         .await?;
-        finish::<DocumentIntelligenceCodec>(codec, request, decoded)
+        finish::<DocumentIntelligenceTransformation>(transformation, request, decoded)
     }
 }
 
@@ -197,15 +211,18 @@ async fn send<A: Auth>(
     .map_err(OcrError::from)
 }
 
-fn finish<C>(
-    codec: &C,
+fn finish<D>(
+    transformation: &D,
     request: &LiteLLMOcrRequest,
-    decoded: DecodedOcrResponse<C::WireResponse>,
+    decoded: DecodedOcrResponse<D::WireResponse>,
 ) -> Result<LiteLLMOcrResponse, OcrError>
 where
-    C: DecodeOcrResponse,
+    D: OcrTransformation,
 {
-    let response = codec.decode(&request.model, decoded.data)?;
+    let response = transformation.transform_response(OcrTransformResponse {
+        model: request.model.clone(),
+        response: decoded.data,
+    })?;
     Ok(LiteLLMOcrResponse {
         provider_native_response: decoded.native,
         ..response

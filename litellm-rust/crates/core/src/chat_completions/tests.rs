@@ -3,7 +3,6 @@ use serde_json::{Map, Value, json};
 use crate::error::Error;
 
 use super::prepare::{prepare_provider_request, resolve_request};
-use super::transformation::ChatCompletionsAuth;
 use super::types::{ChatCompletionsRequest, ProviderChatCompletionsRequest};
 
 fn prepare_chat_completions_call(
@@ -69,6 +68,35 @@ fn strips_an_explicit_provider_prefix_from_the_model() {
 }
 
 #[test]
+fn anthropic_stream_uses_messages_sse_wire_request() {
+    let prepared = prepare_chat_completions_call(request(
+        "anthropic/claude-sonnet-4-5",
+        None,
+        json!([{"role": "user", "content": "hi"}]),
+        json!({"stream": true, "max_tokens": 8}),
+    ))
+    .expect("prepares stream");
+
+    assert_eq!(prepared.url, "https://api.anthropic.com/v1/messages");
+    assert_eq!(prepared.body["stream"], true);
+}
+
+#[cfg(feature = "bedrock-auth")]
+#[test]
+fn bedrock_stream_uses_converse_stream_without_serializing_delivery() {
+    let prepared = prepare_chat_completions_call(request(
+        "bedrock/anthropic.claude-v2",
+        None,
+        json!([{"role": "user", "content": "hi"}]),
+        json!({"stream": true, "maxTokens": 8}),
+    ))
+    .expect("prepares stream");
+
+    assert!(prepared.url.ends_with("/converse-stream"));
+    assert!(prepared.body.get("stream").is_none());
+}
+
+#[test]
 fn adds_the_auth_and_default_headers() {
     let prepared = prepare_chat_completions_call(request(
         "claude-sonnet-4-5",
@@ -87,13 +115,6 @@ fn adds_the_auth_and_default_headers() {
             .upstream_headers
             .contains(&("anthropic-version".to_string(), "2023-06-01".to_string()))
     );
-    assert!(matches!(
-        prepared.auth,
-        ChatCompletionsAuth::Header {
-            name: "x-api-key",
-            ..
-        }
-    ));
 }
 
 #[test]
@@ -197,12 +218,15 @@ fn declines_an_unsupported_request_before_resolving_credentials() {
         "claude-sonnet-4-5",
         Some("anthropic"),
         json!([{"role": "user", "content": "hi"}]),
-        json!({"stream": true}),
+        json!({"future_parameter": true}),
     );
     call.api_key = None;
     // No api_key is set and no env is consulted: the gate must run first, so the
     // error is the decline rather than a missing-credential error.
-    assert_eq!(decline(call), Error::Unsupported("streaming"));
+    assert_eq!(
+        decline(call),
+        Error::Unsupported("unrecognized request parameter")
+    );
 }
 
 #[test]
@@ -285,12 +309,6 @@ fn prepares_a_bedrock_call_without_resolving_credentials() {
         prepared.url,
         "https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-v2/converse"
     );
-    assert_eq!(
-        prepared.auth,
-        ChatCompletionsAuth::AwsSigV4 {
-            region: "us-east-1".to_string()
-        }
-    );
     // SigV4 signs the serialized body, so prepare must not have added an
     // Authorization header; the handler does it.
     assert!(
@@ -325,7 +343,7 @@ async fn a_forwarded_client_header_does_not_enter_the_bedrock_signature() {
         json!("abc-123"),
     )]));
     let prepared = prepare_chat_completions_call(call).expect("prepares");
-    let signed = super::handler::signed_headers(&prepared, br#"{"a":1}"#)
+    let signed = super::execution::signed_headers(&prepared, br#"{"a":1}"#)
         .await
         .expect("signs");
 
@@ -376,7 +394,7 @@ async fn a_forwarded_header_the_signer_computes_declines_to_python() {
         call.api_key = None;
         call.extra_headers = Some(Map::from_iter([(forwarded.to_string(), json!("forged"))]));
         let prepared = prepare_chat_completions_call(call).expect("prepares");
-        let error = super::handler::signed_headers(&prepared, br#"{"a":1}"#)
+        let error = super::execution::signed_headers(&prepared, br#"{"a":1}"#)
             .await
             .expect_err("{forwarded} should decline instead of being signed");
         assert!(
@@ -387,8 +405,8 @@ async fn a_forwarded_header_the_signer_computes_declines_to_python() {
 }
 
 #[cfg(feature = "bedrock-auth")]
-#[test]
-fn a_bedrock_deployment_bearer_outranks_a_forwarded_authorization() {
+#[tokio::test]
+async fn a_bedrock_deployment_bearer_outranks_a_forwarded_authorization() {
     // `get_request_headers` assigns `headers["Authorization"]` unconditionally
     // once a bearer token resolves, so the deployment's identity wins on
     // Python. Keeping the caller's would authorize and bill the call as a
@@ -404,8 +422,10 @@ fn a_bedrock_deployment_bearer_outranks_a_forwarded_authorization() {
         json!("Bearer caller-supplied"),
     )]));
     let prepared = prepare_chat_completions_call(call).expect("prepares");
-    let authorizations: Vec<_> = prepared
-        .upstream_headers
+    let authenticated = super::execution::signed_headers(&prepared, br#"{"a":1}"#)
+        .await
+        .expect("authenticates");
+    let authorizations: Vec<_> = authenticated
         .iter()
         .filter(|(name, _)| name.eq_ignore_ascii_case("authorization"))
         .map(|(_, value)| value.as_str())
@@ -454,8 +474,8 @@ fn an_anthropic_forwarded_oauth_bearer_still_outranks_the_resolved_key() {
 }
 
 #[cfg(feature = "bedrock-auth")]
-#[test]
-fn a_bedrock_api_key_is_sent_as_a_bearer_token_instead_of_being_signed() {
+#[tokio::test]
+async fn a_bedrock_api_key_is_sent_as_a_bearer_token_instead_of_being_signed() {
     // The configured bearer identity has its own account and quota boundary,
     // so a request carrying one must not be signed as whatever principal the
     // host's AWS credentials resolve to.
@@ -466,19 +486,15 @@ fn a_bedrock_api_key_is_sent_as_a_bearer_token_instead_of_being_signed() {
         json!({"maxTokens": 16}),
     ))
     .expect("prepares");
-    assert_eq!(
-        prepared.auth,
-        ChatCompletionsAuth::Bearer {
-            token: "sk-test".to_string()
-        }
-    );
+    let authenticated = super::execution::signed_headers(&prepared, br#"{"a":1}"#)
+        .await
+        .expect("authenticates");
     assert!(
-        prepared
-            .upstream_headers
+        authenticated
             .iter()
             .any(|(name, value)| name.eq_ignore_ascii_case("authorization")
                 && value == "Bearer sk-test"),
-        "prepare did not carry the bearer token"
+        "final request did not carry the bearer token"
     );
 }
 
@@ -509,7 +525,7 @@ fn the_gate_accepts_what_prepare_accepts() {
 }
 
 #[test]
-fn the_gate_declines_without_resolving_credentials_or_calling_out() {
+fn the_gate_accepts_streaming_and_declines_unknown_providers() {
     assert_eq!(
         decline_reason(
             "anthropic/claude-sonnet-4-5",
@@ -517,7 +533,7 @@ fn the_gate_declines_without_resolving_credentials_or_calling_out() {
             json!([{"role": "user", "content": "hi"}]),
             json!({"stream": true}),
         ),
-        Some("streaming")
+        None
     );
     assert_eq!(
         decline_reason(
@@ -800,7 +816,7 @@ mod round_trip {
 
     #[test]
     fn response_errors_collapse_to_one_variant_that_can_only_mean_already_sent() {
-        use crate::chat_completions::handler::as_response_error;
+        use crate::chat_completions::execution::as_response_error;
 
         for original in [
             Error::MissingField("usage"),

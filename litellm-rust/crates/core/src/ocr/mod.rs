@@ -1,6 +1,5 @@
 mod auth;
 pub mod client;
-mod codecs;
 mod document;
 mod endpoints;
 pub mod error;
@@ -10,6 +9,7 @@ mod pipeline;
 mod prepare;
 mod registry;
 pub mod transformation;
+mod transformations;
 pub mod types;
 pub mod wire;
 

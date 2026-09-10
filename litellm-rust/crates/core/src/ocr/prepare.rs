@@ -5,6 +5,7 @@ use super::OcrClient;
 use super::error::{OcrError, OcrRequestError};
 use super::hooks::OcrDuringCallRequest;
 use super::types::{LiteLLMOcrRequest, OcrDocument};
+use crate::operation::{OperationPlan, Provider};
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct ParsedProviderParams<T> {
@@ -26,12 +27,9 @@ impl<T> ParsedProviderParams<T> {
 }
 
 pub(crate) fn _prepare_ocr_request<T: DeserializeOwned>(
-    request: &LiteLLMOcrRequest,
+    optional_params: Map<String, Value>,
 ) -> Result<ParsedProviderParams<T>, OcrRequestError> {
-    super::wire::decode_request_value(
-        Value::Object(request.optional_params.clone()),
-        "optional_params",
-    )
+    super::wire::decode_request_value(Value::Object(optional_params), "optional_params")
 }
 
 pub(crate) async fn transform_request_body<B>(
@@ -50,7 +48,7 @@ where
             .hooks
             .during_call(OcrDuringCallRequest {
                 model: request.model.clone(),
-                custom_llm_provider: request.pipeline.provider().as_str().into(),
+                custom_llm_provider: request.plan.provider().name().into(),
                 url: url.into(),
                 body: serde_json::to_value(body).map_err(|_| OcrRequestError::RequestField {
                     path: "body".into(),
@@ -98,7 +96,7 @@ pub(crate) async fn guardrail_document(
         .hooks
         .during_call(OcrDuringCallRequest {
             model: request.model.clone(),
-            custom_llm_provider: request.pipeline.provider().as_str().into(),
+            custom_llm_provider: request.plan.provider().name().into(),
             url: url.into(),
             body: serde_json::to_value(&request.document).map_err(|_| {
                 OcrRequestError::RequestField {

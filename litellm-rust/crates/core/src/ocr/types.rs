@@ -6,10 +6,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::hooks::{NoopOcrHooks, OcrHooks};
-use super::registry::{OcrPipelineKind, resolve_wire_pipeline};
+use super::registry::{OcrPlan, resolve_plan};
 use crate::Error;
 use crate::auth::InputSource;
 use crate::constants::OCR_HTTP_TIMEOUT_SECS;
+use crate::operation::{Operation, OperationKind};
+
+pub struct OcrOperation;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OcrRequestData {
@@ -101,7 +104,7 @@ pub struct LiteLLMOcrRequest {
     pub litellm_call_id: Option<String>,
     pub optional_params: Map<String, Value>,
     pub input_sources: BTreeMap<String, InputSource>,
-    pub(crate) pipeline: OcrPipelineKind,
+    pub(crate) plan: OcrPlan,
 }
 
 impl LiteLLMOcrRequest {
@@ -117,7 +120,7 @@ impl LiteLLMOcrRequest {
         custom_llm_provider: Option<&str>,
         optional_params: Map<String, Value>,
     ) -> Result<Self, Error> {
-        let (model, pipeline) = resolve_wire_pipeline(&model, custom_llm_provider)?;
+        let (model, plan) = resolve_plan(&model, custom_llm_provider)?;
 
         Ok(Self {
             model,
@@ -127,7 +130,7 @@ impl LiteLLMOcrRequest {
             litellm_call_id: None,
             optional_params,
             input_sources: BTreeMap::new(),
-            pipeline,
+            plan,
         })
     }
 
@@ -168,6 +171,13 @@ pub struct LiteLLMOcrResponse {
     pub extra_fields: Map<String, Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider_native_response: Option<Value>,
+}
+
+impl Operation for OcrOperation {
+    type Request<'a> = LiteLLMOcrRequest;
+    type Response = LiteLLMOcrResponse;
+
+    const KIND: OperationKind = OperationKind::Ocr;
 }
 
 impl LiteLLMOcrResponse {

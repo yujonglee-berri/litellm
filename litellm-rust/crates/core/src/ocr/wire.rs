@@ -36,7 +36,7 @@ pub struct OcrWireRequest {
 }
 
 pub fn is_supported_request(model: &str, custom_llm_provider: Option<&str>) -> bool {
-    super::registry::resolve_wire_pipeline(model, custom_llm_provider).is_ok()
+    super::registry::resolve_plan(model, custom_llm_provider).is_ok()
 }
 
 pub fn decode_request(wire: OcrWireRequest) -> Result<LiteLLMOcrRequest, Error> {

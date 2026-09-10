@@ -1669,33 +1669,77 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
-name = "litellm-ai-gateway"
+name = "litellm-auth"
 version = "0.1.0"
 dependencies = [
- "axum",
  "base64 0.22.1",
- "futures-channel",
- "futures-util",
- "litellm-config",
- "litellm-core",
  "reqwest 0.12.28",
- "rustls 0.23.42",
- "rustls-native-certs",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "subtle",
+ "thiserror 2.0.19",
  "tokio",
- "tokio-tungstenite",
- "tower",
- "tracing",
+ "url",
+ "veil",
+]
+
+[[package]]
+name = "litellm-auth-aws"
+version = "0.1.0"
+dependencies = [
+ "aws-config",
+ "aws-credential-types",
+ "aws-sdk-sts",
+ "aws-sigv4",
+ "aws-smithy-runtime-api",
+ "aws-types",
+ "litellm-auth",
+ "reqwest 0.12.28",
+ "serde_json",
+ "sha2 0.10.9",
+ "tokio",
+]
+
+[[package]]
+name = "litellm-auth-azure"
+version = "0.1.0"
+dependencies = [
+ "azure_core",
+ "azure_identity",
+ "litellm-auth",
+ "moka",
+ "serde_json",
+ "sha2 0.10.9",
+ "strum",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "litellm-auth-google"
+version = "0.1.0"
+dependencies = [
+ "litellm-auth",
+ "tokio",
+]
+
+[[package]]
+name = "litellm-auth-oauth"
+version = "0.1.0"
+dependencies = [
+ "litellm-auth",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]
 name = "litellm-config"
 version = "0.1.0"
 dependencies = [
- "litellm-core",
+ "litellm-gateway-router",
  "pyo3",
  "serde_json",
  "thiserror 2.0.19",
@@ -1705,32 +1749,77 @@ dependencies = [
 name = "litellm-core"
 version = "0.1.0"
 dependencies = [
- "aws-config",
  "aws-credential-types",
- "aws-sdk-sts",
- "aws-sigv4",
- "aws-smithy-runtime-api",
- "aws-types",
- "azure_core",
- "azure_identity",
  "base64 0.22.1",
+ "crc32fast",
  "data-url",
- "moka",
+ "futures-channel",
+ "futures-util",
+ "litellm-auth",
+ "litellm-auth-aws",
+ "litellm-auth-azure",
  "rand 0.8.7",
  "reqwest 0.12.28",
  "rstest",
+ "rustls 0.23.42",
+ "rustls-native-certs",
  "serde",
  "serde_json",
  "serde_path_to_error",
- "sha2 0.10.9",
  "strum",
  "subtle",
  "thiserror 2.0.19",
  "tokio",
+ "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
  "url",
- "veil",
+]
+
+[[package]]
+name = "litellm-gateway-auth"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "sha2 0.10.9",
+ "subtle",
+]
+
+[[package]]
+name = "litellm-gateway-inference"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures-util",
+ "litellm-config",
+ "litellm-core",
+ "litellm-gateway-auth",
+ "litellm-gateway-router",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tracing",
+]
+
+[[package]]
+name = "litellm-gateway-management"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "litellm-gateway-auth",
+ "tokio",
+ "tower",
+]
+
+[[package]]
+name = "litellm-gateway-router"
+version = "0.1.0"
+dependencies = [
+ "rand 0.8.7",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1739,8 +1828,8 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "futures-util",
- "litellm-ai-gateway",
  "litellm-core",
+ "litellm-gateway-inference",
  "litellm-python-interop",
  "pyo3",
  "pyo3-async-runtimes",

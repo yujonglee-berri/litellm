@@ -1,6 +1,8 @@
 pub const OPENAI_DEFAULT_API_BASE: &str = "https://api.openai.com";
 pub const OPENAI_RESPONSES_DEFAULT_API_BASE: &str = "https://api.openai.com/v1";
 pub const OPENAI_RESPONSES_PATH: &str = "/responses";
+pub(crate) const DEFAULT_RESPONSES_WS_CONNECT_TIMEOUT_SECS: u64 = 10;
+pub(crate) const DEFAULT_RESPONSES_WS_IDLE_TIMEOUT_SECS: u64 = 300;
 
 /// Full-request timeout ceiling for Anthropic Messages provider calls, in
 /// seconds. Mirrors the Python Anthropic Messages default. The per-request

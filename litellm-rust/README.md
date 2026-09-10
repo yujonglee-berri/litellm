@@ -24,13 +24,15 @@ coverage and production evidence.
 
 | Crate | Role |
 |-------|------|
-| litellm-core | The SDK. Per-route entrypoints (`messages::messages()`), types, provider transforms (modules under `providers/`), provider resolution, auth, the provider HTTP call, and the router. |
+| litellm-core | The SDK. Per-route entrypoints (`messages::messages()`), types, provider transforms (modules under `providers/`), provider resolution, auth, and the provider HTTP call. |
 | litellm-config | Config-loading boundary. Returns resolved deployments and optionally delegates loading to Python. |
-| litellm-ai-gateway | The axum server (behind the `server` feature) and WebSocket hosts. Translates HTTP/WS to core entrypoints; no provider handlers. |
+| litellm-gateway-inference | The data-plane axum server and WebSocket hosts. Translates inference HTTP/WS routes to core entrypoints. |
+| litellm-gateway-management | The control-plane axum server scaffold for management APIs. |
+| litellm-gateway-router | Gateway deployment selection and routing policy. |
 | litellm-python-interop | Domain-neutral PyO3 foundation for GIL handling and typed Python/Serde conversion. |
 | litellm-python-bridge | PyO3 cdylib exposing LiteLLM Rust APIs to the Python SDK. Owns API registration, domain wiring, and Python exception mapping. |
 
-Dependency direction is acyclic: config depends on core, the gateway depends on config and core, and the Python bridge depends on the domain layers and Python interop.
+Dependency direction is acyclic: config depends on gateway-router, gateway hosts depend on their shared foundations, and the Python bridge depends on the domain layers and Python interop.
 
 ## Layout
 
@@ -40,7 +42,9 @@ crates/
     src/messages/   mod.rs (entrypoint), types, transformation, prepare, handler, client
     src/providers/anthropic/messages/transformation.rs
   config/         Config loading and resolved deployments.
-  ai-gateway/     Axum server + WebSocket hosts; calls core entrypoints.
+  gateway-inference/  Data-plane axum server + WebSocket hosts; calls core entrypoints.
+  gateway-management/ Control-plane axum server scaffold.
+  gateway-router/ Gateway deployment selection and routing policy.
   python-interop/ Domain-neutral PyO3 conversion and GIL primitives.
   python-bridge/  PyO3 API adapter for Python LiteLLM.
 ```
