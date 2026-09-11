@@ -1,7 +1,6 @@
-use litellm_operation::{Error, JsonExecution, NoHooks, Pipeline};
+use litellm_operation::{ApiKeyAuth, Error, JsonExecution, NoHooks, Pipeline};
 use litellm_transport::Transport;
 
-use crate::auth::{AzureOcrAuth, MistralAuth, ReductoAuth};
 use crate::endpoints::{
     AzureDocumentIntelligenceEndpoint, AzureMistralEndpoint, MistralEndpoint, ReductoEndpoint,
     ReductoLegacyEndpoint,
@@ -60,6 +59,8 @@ fn is_document_intelligence_model(model: &str) -> bool {
     model.contains("doc-intelligence") || model.contains("documentintelligence")
 }
 
+const AZURE_DI_SUBSCRIPTION_HEADER: &str = "ocp-apim-subscription-key";
+
 pub async fn dispatch<T>(
     composition: OcrComposition,
     transport: T,
@@ -72,7 +73,7 @@ where
     match composition {
         OcrComposition::Mistral => {
             Pipeline::new(
-                MistralAuth,
+                ApiKeyAuth::bearer("mistral"),
                 MistralEndpoint,
                 MistralTransformation,
                 JsonExecution::new(transport),
@@ -83,7 +84,7 @@ where
         }
         OcrComposition::AzureMistral => {
             Pipeline::new(
-                AzureOcrAuth::Mistral,
+                ApiKeyAuth::bearer("azure"),
                 AzureMistralEndpoint,
                 MistralTransformation,
                 InlineJsonExecution::new(transport),
@@ -94,7 +95,7 @@ where
         }
         OcrComposition::AzureDocumentIntelligence => {
             Pipeline::new(
-                AzureOcrAuth::DocumentIntelligence,
+                ApiKeyAuth::header("azure", AZURE_DI_SUBSCRIPTION_HEADER),
                 AzureDocumentIntelligenceEndpoint,
                 DocumentIntelligenceTransformation,
                 DocumentIntelligenceExecution::new(transport),
@@ -105,7 +106,7 @@ where
         }
         OcrComposition::ReductoLegacy => {
             Pipeline::new(
-                ReductoAuth,
+                ApiKeyAuth::bearer("reducto"),
                 ReductoLegacyEndpoint,
                 ReductoLegacyTransformation,
                 ReductoExecution::new(transport),
@@ -116,7 +117,7 @@ where
         }
         OcrComposition::ReductoV3 => {
             Pipeline::new(
-                ReductoAuth,
+                ApiKeyAuth::bearer("reducto"),
                 ReductoEndpoint,
                 ReductoV3Transformation,
                 ReductoExecution::new(transport),

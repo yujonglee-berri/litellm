@@ -1,5 +1,5 @@
 use litellm_auth::SecretValue;
-use litellm_operation::Operation;
+use litellm_operation::{ApiKeySource, Operation};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Ocr;
@@ -54,6 +54,12 @@ impl OcrDocument {
 pub struct OcrCallContext {
     pub api_key: Option<SecretValue>,
     pub api_base: Option<String>,
+}
+
+impl ApiKeySource for OcrCallContext {
+    fn api_key(&self) -> Option<&SecretValue> {
+        self.api_key.as_ref()
+    }
 }
 
 #[cfg(test)]

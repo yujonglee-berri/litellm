@@ -1,4 +1,3 @@
-mod auth;
 mod codec;
 mod endpoints;
 mod execution;
@@ -6,7 +5,6 @@ mod plan;
 mod registry;
 mod types;
 
-pub use auth::{AzureOcrAuth, MistralAuth, ReductoAuth};
 pub use codec::{
     DocumentIntelligenceParams, DocumentIntelligenceRequest, DocumentIntelligenceResponse,
     MistralOcrPage, MistralOcrRequest, MistralOcrResponse, MistralParams, ReductoParseRequest,
@@ -18,8 +16,9 @@ pub use endpoints::{
 };
 pub use execution::{DocumentIntelligenceExecution, InlineJsonExecution, ReductoExecution};
 pub use litellm_operation::{
-    CompleteHooks, DuringCallHook, Error, ExecuteOperation, FailureHook, JsonExecution, NoHooks,
-    OperationCodec, Pipeline, PostCallHook, PreCallHook, ResolveEndpoint, SuccessHook,
+    ApiKeyAuth, ApiKeySource, CompleteHooks, DuringCallHook, Error, ExecuteOperation, FailureHook,
+    JsonExecution, NoHooks, OperationCodec, Pipeline, PostCallHook, PreCallHook, ResolveEndpoint,
+    SuccessHook,
 };
 pub use plan::{
     AzureAi, AzureDocumentIntelligenceAnalyze, AzureDocumentIntelligencePlan, AzureMistralPlan,
