@@ -2,7 +2,7 @@ use std::pin::Pin;
 
 use futures_util::Stream;
 
-use crate::{DeliveryMode, Operation, SessionOperation, WireOperation};
+use crate::{DeliveryMode, Operation, SessionOperation, StreamingOperation, WireOperation};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Fidelity {
@@ -74,22 +74,17 @@ pub trait ResponseTransformation<O: Operation, W: WireOperation>:
 
 pub type EventStream<T, E> = Pin<Box<dyn Stream<Item = Result<T, E>> + Send + 'static>>;
 
-pub trait ServerStreamingContract {
-    type Request: Send;
-    type Event: Send + 'static;
-}
-
 pub trait StreamTransformation {
-    type Caller: ServerStreamingContract;
-    type Upstream: ServerStreamingContract;
+    type Caller: StreamingOperation;
+    type Upstream: StreamingOperation;
     type Context: Send + 'static;
     type Error: Send + 'static;
 
     fn transform_stream(
         &self,
         context: Self::Context,
-        upstream: EventStream<<Self::Upstream as ServerStreamingContract>::Event, Self::Error>,
-    ) -> EventStream<<Self::Caller as ServerStreamingContract>::Event, Self::Error>;
+        upstream: EventStream<<Self::Upstream as StreamingOperation>::StreamEvent, Self::Error>,
+    ) -> EventStream<<Self::Caller as StreamingOperation>::StreamEvent, Self::Error>;
 }
 
 pub trait SessionTransformation<O: SessionOperation, W: WireOperation>:

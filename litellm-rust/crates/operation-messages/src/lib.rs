@@ -12,6 +12,6 @@ pub use litellm_operation::{
     TargetAuth, TargetEndpoint,
 };
 pub use types::{
-    CallMessage, Message, Messages, MessagesCall, MessagesRequest, MessagesResponse,
+    AnthropicMessages, CallMessage, Message, MessagesCall, MessagesRequest, MessagesResponse,
     MessagesStreamEvent,
 };

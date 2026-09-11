@@ -1,16 +1,16 @@
 use litellm_operation::{Operation, StreamingOperation};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct Messages;
+pub struct AnthropicMessages;
 
-impl Operation for Messages {
+impl Operation for AnthropicMessages {
     type Request<'a> = MessagesRequest<'a>;
     type Response = MessagesResponse;
 
-    const NAME: &'static str = "messages";
+    const NAME: &'static str = "anthropic_messages";
 }
 
-impl StreamingOperation for Messages {
+impl StreamingOperation for AnthropicMessages {
     type StreamEvent = MessagesStreamEvent;
 }
 
@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn marker_exposes_the_canonical_contract() {
-        fn request_model(request: <Messages as Operation>::Request<'_>) -> &str {
+        fn request_model(request: <AnthropicMessages as Operation>::Request<'_>) -> &str {
             request.model
         }
 
@@ -69,6 +69,6 @@ mod tests {
             }),
             "model"
         );
-        assert_eq!(Messages::NAME, "messages");
+        assert_eq!(AnthropicMessages::NAME, "anthropic_messages");
     }
 }

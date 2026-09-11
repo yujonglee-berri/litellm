@@ -38,7 +38,6 @@ pub use streaming::{
 pub use target::{HttpTarget, TargetAuth, TargetEndpoint};
 pub use transformation::{
     EventStream, Fidelity, OperationTransformation, ParameterPolicy, ParameterRule,
-    ParameterTransformation, RequestTransformation, ResponseTransformation,
-    ServerStreamingContract, SessionTransformation, StreamTransformation,
-    TransformationForDelivery, TransformationKind,
+    ParameterTransformation, RequestTransformation, ResponseTransformation, SessionTransformation,
+    StreamTransformation, TransformationForDelivery, TransformationKind,
 };
