@@ -18,7 +18,7 @@ The workspace has 30 crates
 | litellm-operation | Provider-independent semantic operation types and pipeline composition |
 | litellm-operation-audio-transcription | Audio transcription semantic contract |
 | litellm-operation-chat-completions | Chat Completions semantic contract and plans |
-| litellm-operation-messages | Anthropic Messages API contract and legacy wire adapter pending extraction |
+| litellm-operation-messages | Messages API contract and legacy wire adapter pending extraction |
 | litellm-operation-ocr | OCR semantic contract and plans |
 | litellm-operation-realtime | Realtime semantic contract, OpenAI WebSocket execution, instrumentation, and warm-session runtime |
 | litellm-operation-responses | Responses semantic contract |
