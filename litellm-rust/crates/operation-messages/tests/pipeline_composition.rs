@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use futures_util::StreamExt;
 use litellm_auth::{
-    Auth, AuthFuture, AuthScheme, ExistingHeaderBehavior, HeaderAuth, ResolveAuth, ResolvedAuth,
+    Auth, AuthFuture, AuthResolver, AuthScheme, ExistingHeaderBehavior, HeaderAuth, ResolvedAuth,
     SecretValue,
 };
 use litellm_operation::{
@@ -58,9 +58,9 @@ struct FakeResolver {
     log: Log,
 }
 
-impl ResolveAuth<MessagesCall, ()> for FakeResolver {
+impl AuthResolver<MessagesCall, ()> for FakeResolver {
     type Authenticator = LoggingAuth;
-    type Context = ();
+    type AuthContext = ();
     type Error = Error;
 
     async fn resolve(

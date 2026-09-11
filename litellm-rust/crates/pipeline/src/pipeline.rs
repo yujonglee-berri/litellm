@@ -1,4 +1,4 @@
-use litellm_auth::ResolveAuth;
+use litellm_auth::AuthResolver;
 use litellm_operation::{CompleteHooks, FailureHook, NoHooks, OperationCodec};
 
 use crate::{Error, ExecuteOperation, ResolveEndpoint};
@@ -35,10 +35,10 @@ where
     ) -> Result<C::Response, Error>
     where
         Services: Sync,
-        A: ResolveAuth<C::Call, Services>,
+        A: AuthResolver<C::Call, Services>,
         Error: From<A::Error>,
-        E: ResolveEndpoint<A::Context, C::Params, C::Call, Services>,
-        X: ExecuteOperation<C, A::Authenticator, A::Context>,
+        E: ResolveEndpoint<A::AuthContext, C::Params, C::Call, Services>,
+        X: ExecuteOperation<C, A::Authenticator, A::AuthContext>,
     {
         let call = report_failure(
             &self.hooks,

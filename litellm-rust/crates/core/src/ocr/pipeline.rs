@@ -11,7 +11,7 @@ use super::hooks::OcrLifecycleHooks;
 use super::registry::OcrPlan;
 use super::transformations::{OcrParameterInput, OcrTransformation};
 use super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse};
-use litellm_auth::ResolveAuth;
+use litellm_auth::AuthResolver;
 
 pub(crate) trait Ocr: Send + Sync {
     fn handle(
@@ -49,10 +49,10 @@ impl<A, E, D, X> OcrPipeline<A, E, D, X> {
 
 impl<A, E, D, X> Ocr for OcrPipeline<A, E, D, X>
 where
-    A: ResolveAuth<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
-    E: ResolveOcrEndpoint<A::Context, D::Params>,
+    A: AuthResolver<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
+    E: ResolveOcrEndpoint<A::AuthContext, D::Params>,
     D: OcrTransformation,
-    X: ExecuteOcr<D, A::Authenticator, A::Context>,
+    X: ExecuteOcr<D, A::Authenticator, A::AuthContext>,
 {
     async fn handle(&self, request: LiteLLMOcrRequest) -> Result<LiteLLMOcrResponse, Error> {
         let prepare = tracing::trace_span!(
@@ -65,10 +65,10 @@ where
 
 impl<A, E, D, X> OcrPipeline<A, E, D, X>
 where
-    A: ResolveAuth<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
-    E: ResolveOcrEndpoint<A::Context, D::Params>,
+    A: AuthResolver<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
+    E: ResolveOcrEndpoint<A::AuthContext, D::Params>,
     D: OcrTransformation,
-    X: ExecuteOcr<D, A::Authenticator, A::Context>,
+    X: ExecuteOcr<D, A::Authenticator, A::AuthContext>,
 {
     async fn handle_with_prepare(
         &self,
@@ -98,10 +98,10 @@ where
 
 impl<A, E, D, X> OcrPipeline<A, E, D, X>
 where
-    A: ResolveAuth<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
-    E: ResolveOcrEndpoint<A::Context, D::Params>,
+    A: AuthResolver<LiteLLMOcrRequest, OcrClient, Error = super::error::OcrError>,
+    E: ResolveOcrEndpoint<A::AuthContext, D::Params>,
     D: OcrTransformation,
-    X: ExecuteOcr<D, A::Authenticator, A::Context>,
+    X: ExecuteOcr<D, A::Authenticator, A::AuthContext>,
 {
     #[tracing::instrument(
         name = "execute_ocr_provider_call",

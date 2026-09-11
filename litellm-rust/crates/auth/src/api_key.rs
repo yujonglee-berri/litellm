@@ -1,7 +1,7 @@
 use reqwest::header::{AUTHORIZATION, HeaderName};
 
 use crate::{
-    AuthError, ExistingHeaderBehavior, HeaderAuth, ResolveAuth, ResolvedAuth, SecretValue,
+    AuthError, AuthResolver, ExistingHeaderBehavior, HeaderAuth, ResolvedAuth, SecretValue,
 };
 
 pub trait ApiKeySource {
@@ -50,13 +50,13 @@ impl ApiKeyAuth {
     }
 }
 
-impl<Call, Services> ResolveAuth<Call, Services> for ApiKeyAuth
+impl<Call, Services> AuthResolver<Call, Services> for ApiKeyAuth
 where
     Call: Sync,
     Services: ApiKeySource + Sync,
 {
     type Authenticator = HeaderAuth;
-    type Context = ();
+    type AuthContext = ();
     type Error = AuthError;
 
     async fn resolve(

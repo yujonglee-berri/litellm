@@ -1,4 +1,4 @@
-use litellm_auth::{Auth, ResolveAuth, ResolvedAuth};
+use litellm_auth::{Auth, AuthResolver, ResolvedAuth};
 
 use crate::Error;
 use crate::endpoint::ResolveEndpoint;
@@ -20,14 +20,14 @@ impl<A> TargetAuth<A> {
     }
 }
 
-impl<A, Call, Context> ResolveAuth<Call, Context> for TargetAuth<A>
+impl<A, Call, Context> AuthResolver<Call, Context> for TargetAuth<A>
 where
     A: Auth + Clone,
     Call: Send + Sync,
     Context: Send + Sync,
 {
     type Authenticator = A;
-    type Context = ();
+    type AuthContext = ();
     type Error = Error;
 
     async fn resolve(

@@ -10,7 +10,7 @@ use crate::ocr::prepare::credential_env;
 use crate::ocr::types::{LiteLLMOcrRequest, OcrConnection};
 use litellm_auth::error::AuthConfigurationError;
 use litellm_auth::{
-    AuthError, ExistingHeaderBehavior, HeaderAuth, InputSource, ResolveAuth, ResolvedAuth,
+    AuthError, AuthResolver, ExistingHeaderBehavior, HeaderAuth, InputSource, ResolvedAuth,
     SecretValue, Sourced,
 };
 use litellm_auth_azure::{AzureAuthInputs, AzureAuthService};
@@ -23,9 +23,9 @@ const REDUCTO_API_KEY_ENV: &str = "REDUCTO_API_KEY";
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct MistralAuth;
 
-impl ResolveAuth<LiteLLMOcrRequest, OcrClient> for MistralAuth {
+impl AuthResolver<LiteLLMOcrRequest, OcrClient> for MistralAuth {
     type Authenticator = HeaderAuth;
-    type Context = ();
+    type AuthContext = ();
     type Error = OcrError;
 
     async fn resolve(
@@ -46,9 +46,9 @@ impl ResolveAuth<LiteLLMOcrRequest, OcrClient> for MistralAuth {
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ReductoAuth;
 
-impl ResolveAuth<LiteLLMOcrRequest, OcrClient> for ReductoAuth {
+impl AuthResolver<LiteLLMOcrRequest, OcrClient> for ReductoAuth {
     type Authenticator = HeaderAuth;
-    type Context = ();
+    type AuthContext = ();
     type Error = OcrError;
 
     async fn resolve(
@@ -70,9 +70,9 @@ pub(crate) enum AzureOcrAuth {
     DocumentIntelligence,
 }
 
-impl ResolveAuth<LiteLLMOcrRequest, OcrClient> for AzureOcrAuth {
+impl AuthResolver<LiteLLMOcrRequest, OcrClient> for AzureOcrAuth {
     type Authenticator = HeaderAuth;
-    type Context = ();
+    type AuthContext = ();
     type Error = OcrError;
 
     #[tracing::instrument(

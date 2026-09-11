@@ -1,4 +1,3 @@
-mod auth;
 mod batch;
 mod codec;
 mod endpoint;
@@ -12,7 +11,6 @@ mod streaming;
 mod target;
 mod transformation;
 
-pub use auth::{ApiKeyAuth, ApiKeySource};
 pub use batch::{
     Batch, BatchAction, BatchCancelRequest, BatchItem, BatchItemError, BatchItemOutcome,
     BatchItemResult, BatchJob, BatchRequestCounts, BatchResultsRequest, BatchResultsResponse,

@@ -8,14 +8,16 @@ pub struct ResolvedAuth<A, C> {
     pub context: C,
 }
 
-pub trait ResolveAuth<Input: ?Sized, Services: ?Sized>: Send + Sync {
+pub trait AuthResolver<Input: ?Sized, Services: ?Sized>: Send + Sync {
     type Authenticator: Auth;
-    type Context: Send + Sync;
+    type AuthContext: Send + Sync;
     type Error;
 
     fn resolve(
         &self,
         input: &Input,
         services: &Services,
-    ) -> impl Future<Output = Result<ResolvedAuth<Self::Authenticator, Self::Context>, Self::Error>> + Send;
+    ) -> impl Future<
+        Output = Result<ResolvedAuth<Self::Authenticator, Self::AuthContext>, Self::Error>,
+    > + Send;
 }

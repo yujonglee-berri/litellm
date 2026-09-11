@@ -1,5 +1,5 @@
 use futures_util::StreamExt;
-use litellm_auth::{Auth, ResolveAuth};
+use litellm_auth::{Auth, AuthResolver};
 
 use crate::Error;
 use crate::codec::OperationCodec;
@@ -47,9 +47,9 @@ impl<A: Auth + Clone, C, X, H> Pipeline<TargetAuth<A>, TargetEndpoint, C, X, H> 
 impl<A, E, C, X, H> Pipeline<A, E, C, X, H>
 where
     C: OperationCodec,
-    A: ResolveAuth<C::Call, C::Context, Error = Error>,
-    E: ResolveEndpoint<A::Context, C::Params, C::Call, C::Context>,
-    X: ExecuteOperation<C, A::Authenticator, A::Context>,
+    A: AuthResolver<C::Call, C::Context, Error = Error>,
+    E: ResolveEndpoint<A::AuthContext, C::Params, C::Call, C::Context>,
+    X: ExecuteOperation<C, A::Authenticator, A::AuthContext>,
     H: CompleteHooks<C::Call, C::Response>,
 {
     pub async fn handle(&self, call: C::Call, context: &C::Context) -> Result<C::Response, Error> {
@@ -79,9 +79,9 @@ where
     C: OperationStreamCodec + Clone + 'static,
     C::Call: 'static,
     C::StreamEvent: Send + 'static,
-    A: ResolveAuth<C::Call, C::Context, Error = Error>,
-    E: ResolveEndpoint<A::Context, C::Params, C::Call, C::Context>,
-    X: ExecuteStreamOperation<C, A::Authenticator, A::Context>,
+    A: AuthResolver<C::Call, C::Context, Error = Error>,
+    E: ResolveEndpoint<A::AuthContext, C::Params, C::Call, C::Context>,
+    X: ExecuteStreamOperation<C, A::Authenticator, A::AuthContext>,
     H: StreamHooks<C::Call, C::StreamEvent> + Clone + 'static,
 {
     pub async fn stream(
