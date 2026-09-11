@@ -64,7 +64,7 @@ pub use request::{
     Auth, AuthFuture, AuthHandle, AuthScheme, BasicAuth, BearerTokenAuth, CompositeAuth,
     HeaderAuth, NoAuth, QueryParamAuth,
 };
-pub use resolver::{AuthResolver, ResolvedAuth};
+pub use resolver::{AuthResolver, ResolvedAuth, TokenAuthResolver};
 pub use secret::SecretValue;
 pub use token::{
     CachedTokenProvider, ResolvedCredential, TokenFuture, TokenProvider, TokenProviderHandle,
