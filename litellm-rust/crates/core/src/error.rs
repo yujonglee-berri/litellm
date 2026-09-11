@@ -129,10 +129,10 @@ impl From<TransportError> for Error {
     }
 }
 
-impl From<crate::AuthError> for Error {
-    fn from(error: crate::AuthError) -> Self {
+impl From<litellm_auth::AuthError> for Error {
+    fn from(error: litellm_auth::AuthError) -> Self {
         match error {
-            crate::AuthError::MissingApiKey { provider } => Self::MissingApiKey { provider },
+            litellm_auth::AuthError::MissingApiKey { provider } => Self::MissingApiKey { provider },
             error => Self::Auth(error.to_string()),
         }
     }
@@ -156,7 +156,7 @@ mod transport_tests {
     #[test]
     fn missing_auth_key_preserves_provider_in_public_error() {
         assert_eq!(
-            Error::from(crate::AuthError::MissingApiKey { provider: "Vertex" }),
+            Error::from(litellm_auth::AuthError::MissingApiKey { provider: "Vertex" }),
             Error::MissingApiKey { provider: "Vertex" }
         );
     }

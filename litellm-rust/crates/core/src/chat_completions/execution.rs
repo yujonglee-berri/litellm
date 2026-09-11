@@ -1,8 +1,8 @@
 use serde_json::Value;
 
-use crate::auth::Auth;
 use crate::error::Error;
 use crate::http_utils::{http_request, truncate_error_body};
+use litellm_auth::Auth;
 
 use super::client::http_client;
 use super::transformations::transformation_for;
@@ -91,10 +91,10 @@ pub(super) fn as_response_error(err: Error) -> Error {
     }
 }
 
-pub(super) fn auth_error(error: crate::AuthError) -> Error {
+pub(super) fn auth_error(error: litellm_auth::AuthError) -> Error {
     if matches!(
         error,
-        crate::AuthError::Aws(crate::auth::error::AwsAuthError::ComputedHeader(_))
+        litellm_auth::AuthError::Aws(litellm_auth::error::AwsAuthError::ComputedHeader(_))
     ) {
         Error::Unsupported("request forwards a header AWS SigV4 computes")
     } else {

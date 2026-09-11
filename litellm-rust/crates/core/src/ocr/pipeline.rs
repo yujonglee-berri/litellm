@@ -11,7 +11,7 @@ use super::hooks::OcrLifecycleHooks;
 use super::registry::OcrPlan;
 use super::transformations::{OcrParameterInput, OcrTransformation};
 use super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse};
-use crate::auth::ResolveAuth;
+use litellm_auth::ResolveAuth;
 
 pub(crate) trait Ocr: Send + Sync {
     fn handle(

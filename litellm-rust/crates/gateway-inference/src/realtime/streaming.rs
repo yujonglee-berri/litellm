@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use litellm_core::realtime::instrumentation::{RealtimeInstrumentation, RealtimeLogPayload};
-use litellm_core::realtime::types::RealtimeEvent;
+use litellm_operation_realtime::instrumentation::{RealtimeInstrumentation, RealtimeLogPayload};
+use litellm_operation_realtime::wire::RealtimeEvent;
 
 use crate::integrations::custom_logger::{
     CallbackTiming, CallbackValue, CustomLogger, CustomLoggerRunner, LoggingError, ModelCallDetails,

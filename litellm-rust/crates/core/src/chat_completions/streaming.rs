@@ -11,10 +11,10 @@ use super::transformations::{ChatCompletionsStreamState, transform_stream_event}
 use super::types::{
     ChatCompletionsStream, ChatCompletionsStreamEvent, ProviderChatCompletionsRequest,
 };
-use crate::auth::Auth;
 use crate::error::Error;
 use crate::http_utils::{http_request, truncate_error_body};
 use crate::operation::OperationPlan;
+use litellm_auth::Auth;
 
 const MAX_STREAM_FRAME_BYTES: usize = 16 * 1024 * 1024;
 

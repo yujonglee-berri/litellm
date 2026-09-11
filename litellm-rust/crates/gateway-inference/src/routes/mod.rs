@@ -19,11 +19,21 @@ use crate::state::AppState;
 pub fn app(state: AppState) -> Router {
     Router::new()
         .merge(health::router())
+        .merge(router())
+        .with_state(state)
+}
+
+/// Domain routes this family contributes to the host.
+pub fn contribute(state: AppState) -> Router {
+    router().with_state(state)
+}
+
+fn router() -> Router<AppState> {
+    Router::new()
         .merge(messages::router())
         .merge(porting::router())
         .merge(realtime::router())
         .merge(responses::router())
-        .with_state(state)
 }
 
 #[cfg(test)]
@@ -38,7 +48,7 @@ mod tests {
 
     use super::app;
     use crate::state::AppState;
-    use litellm_core::realtime::pool::RealtimePool;
+    use litellm_operation_realtime::pool::RealtimePool;
 
     fn state() -> AppState {
         AppState {

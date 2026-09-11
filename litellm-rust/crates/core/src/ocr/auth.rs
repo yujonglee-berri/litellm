@@ -2,18 +2,18 @@ use std::sync::OnceLock;
 
 use reqwest::header::HeaderName;
 
-use crate::auth::azure::{AzureAuthInputs, AzureAuthService};
-use crate::auth::error::AuthConfigurationError;
-use crate::auth::{
-    ExistingHeaderBehavior, HeaderAuth, InputSource, ResolveAuth, ResolvedAuth, SecretValue,
-    Sourced,
-};
+use crate::Error;
 use crate::constants::AZURE_DI_SUBSCRIPTION_HEADER;
 use crate::ocr::OcrClient;
 use crate::ocr::error::OcrError;
 use crate::ocr::prepare::credential_env;
 use crate::ocr::types::{LiteLLMOcrRequest, OcrConnection};
-use crate::{AuthError, Error};
+use litellm_auth::error::AuthConfigurationError;
+use litellm_auth::{
+    AuthError, ExistingHeaderBehavior, HeaderAuth, InputSource, ResolveAuth, ResolvedAuth,
+    SecretValue, Sourced,
+};
+use litellm_auth_azure::{AzureAuthInputs, AzureAuthService};
 
 const AZURE_AI_API_KEY_ENV: &str = "AZURE_AI_API_KEY";
 const AZURE_DI_API_KEY_ENV: &str = "AZURE_DOCUMENT_INTELLIGENCE_API_KEY";

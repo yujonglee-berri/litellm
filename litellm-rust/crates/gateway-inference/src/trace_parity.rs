@@ -13,7 +13,7 @@ use tower::ServiceExt;
 
 use crate::routes;
 use crate::state::AppState;
-use litellm_core::realtime::pool::RealtimePool;
+use litellm_operation_realtime::pool::RealtimePool;
 
 #[derive(Debug, Serialize)]
 pub struct GatewayResponse {

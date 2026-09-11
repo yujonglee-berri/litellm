@@ -155,7 +155,7 @@ mod tests {
 
     use super::super::app;
     use crate::state::AppState;
-    use litellm_core::realtime::pool::RealtimePool;
+    use litellm_operation_realtime::pool::RealtimePool;
 
     fn state(model: &str, api_base: String, master_key: Option<&str>) -> AppState {
         state_with_provider(model, model, api_base, master_key)

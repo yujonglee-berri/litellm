@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use litellm_core::realtime::pool::RealtimePool;
 use litellm_gateway_router::Router;
+use litellm_operation_realtime::pool::RealtimePool;
 
 use crate::integrations::custom_logger::CustomLogger;
 use litellm_gateway_auth::MasterKeyProvider;

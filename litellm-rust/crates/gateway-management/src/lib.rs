@@ -1,5 +1,9 @@
 #[cfg(feature = "server")]
 pub mod constants;
+#[cfg(feature = "store")]
+pub mod error;
+#[cfg(feature = "store")]
+pub mod keys;
 #[cfg(feature = "server")]
 pub mod routes;
 #[cfg(feature = "server")]

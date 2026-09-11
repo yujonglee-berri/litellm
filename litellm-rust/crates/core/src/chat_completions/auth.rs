@@ -5,8 +5,8 @@ use crate::providers::anthropic::messages::transformation::resolve_anthropic_api
 
 use super::registry::ChatCompletionsProvider;
 use super::types::ResolvedChatCompletionsRequest;
-use crate::auth::{AuthHandle, ExistingHeaderBehavior, HeaderAuth, NoAuth, SecretValue};
 use crate::operation::OperationPlan;
+use litellm_auth::{AuthHandle, ExistingHeaderBehavior, HeaderAuth, NoAuth, SecretValue};
 
 const HEADER_CONTEXT: &str = "chat completions";
 

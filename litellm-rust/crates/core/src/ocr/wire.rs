@@ -6,7 +6,7 @@ use std::time::Duration;
 use super::hooks::{OcrDuringCallRequest, OcrPreCallRequest};
 use super::types::{LiteLLMOcrRequest, OcrConnection, OcrDocument};
 use crate::Error;
-use crate::auth::InputSource;
+use litellm_auth::InputSource;
 use serde::{
     Deserialize,
     de::{DeserializeOwned, IntoDeserializer},

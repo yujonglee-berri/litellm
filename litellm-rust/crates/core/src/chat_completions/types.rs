@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::registry::ChatCompletionsPlan;
-use crate::auth::AuthHandle;
 use crate::operation::{Operation, OperationKind, StreamingOperation};
+use litellm_auth::AuthHandle;
 
 pub struct ChatCompletionsOperation;
 

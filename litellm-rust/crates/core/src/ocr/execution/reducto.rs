@@ -1,4 +1,4 @@
-use crate::auth::Auth;
+use litellm_auth::Auth;
 
 use super::super::OcrClient;
 use super::super::document::InlineDocument;
@@ -9,7 +9,7 @@ use super::super::transformations::reducto::ReductoUploadResponse;
 use super::super::transformations::{OcrTransformRequest, OcrTransformation};
 use super::super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse, OcrConnection, OcrDocument};
 use super::{ExecuteOcr, finish, send_json};
-use crate::auth::ResolvedAuth;
+use litellm_auth::ResolvedAuth;
 
 const REDUCTO_ID_PREFIX: &str = "reducto://";
 

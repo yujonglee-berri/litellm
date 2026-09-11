@@ -18,6 +18,7 @@ tracing.workspace = true
 litellm-core = { workspace = true, features = ["bedrock-auth"] }
 litellm-config.workspace = true
 litellm-gateway-router.workspace = true
+litellm-operation-realtime.workspace = true
 # reqwest ships callback records to the Python proxy API and exposes core SSE responses.
 reqwest.workspace = true
 # `sync` powers the bounded mpsc channel the realtime logger drains.

@@ -15,12 +15,28 @@ required-features = ["server"]
 
 [dependencies]
 axum = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"], optional = true }
 litellm-gateway-auth = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+thiserror = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 
 [features]
 default = []
-server = ["dep:axum", "dep:litellm-gateway-auth", "dep:tokio"]
+store = [
+    "dep:base64",
+    "dep:chrono",
+    "dep:litellm-gateway-auth",
+    "dep:rand",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:thiserror",
+]
+server = ["store", "dep:axum", "dep:tokio"]
 
 [dev-dependencies]
+serde_json.workspace = true
 tower = { version = "0.5.3", features = ["util"] }

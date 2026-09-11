@@ -17,9 +17,9 @@ use axum::http::StatusCode;
 use axum::response::Response;
 use axum::routing::get;
 use futures_util::{SinkExt, StreamExt};
-use litellm_core::realtime::pool::RealtimePool;
-use litellm_core::realtime::types::RealtimeEvent;
 use litellm_gateway_router::Router as ModelRouter;
+use litellm_operation_realtime::pool::RealtimePool;
+use litellm_operation_realtime::wire::RealtimeEvent;
 use serde::Deserialize;
 
 use crate::integrations::custom_logger::CustomLogger;

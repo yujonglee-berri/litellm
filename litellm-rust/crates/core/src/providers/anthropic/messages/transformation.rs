@@ -1,6 +1,6 @@
-use crate::auth::error::MissingCredential;
 use crate::error::Error;
 use crate::messages::transformation::{AnthropicMessagesProviderConfig, MessagesAuthStrategy};
+use litellm_auth::error::MissingCredential;
 
 const ANTHROPIC_API_KEY_ENV: &str = "ANTHROPIC_API_KEY";
 const ANTHROPIC_API_BASE_ENV: &str = "ANTHROPIC_API_BASE";
@@ -22,7 +22,11 @@ pub fn resolve_anthropic_api_key(
     non_empty(api_key)
         .map(str::to_string)
         .or_else(|| env_lookup(ANTHROPIC_API_KEY_ENV).filter(|value| !value.trim().is_empty()))
-        .ok_or_else(|| Error::from(crate::AuthError::from(MissingCredential::AnthropicApiKey)))
+        .ok_or_else(|| {
+            Error::from(litellm_auth::AuthError::from(
+                MissingCredential::AnthropicApiKey,
+            ))
+        })
 }
 
 pub fn complete_anthropic_url(

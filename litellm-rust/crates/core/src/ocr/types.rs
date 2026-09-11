@@ -8,9 +8,9 @@ use serde_json::{Map, Value};
 use super::hooks::{NoopOcrHooks, OcrHooks};
 use super::registry::{OcrPlan, resolve_plan};
 use crate::Error;
-use crate::auth::InputSource;
 use crate::constants::OCR_HTTP_TIMEOUT_SECS;
 use crate::operation::{Operation, OperationKind};
+use litellm_auth::InputSource;
 
 pub struct OcrOperation;
 

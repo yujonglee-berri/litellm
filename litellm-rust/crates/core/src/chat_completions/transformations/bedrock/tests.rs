@@ -3,11 +3,11 @@ use crate::Error;
 use crate::chat_completions::types::ProviderChatResponseData;
 use serde_json::json;
 
-use crate::auth::{Auth, AuthScheme};
 use crate::chat_completions::auth::authenticate_with_env;
 use crate::chat_completions::endpoints::bedrock::resolve_with_env;
 use crate::chat_completions::registry::ChatCompletionsPlan;
 use crate::chat_completions::types::ResolvedChatCompletionsRequest;
+use litellm_auth::{Auth, AuthScheme};
 
 fn messages(value: Value) -> Vec<ChatMessage> {
     serde_json::from_value(value).expect("valid messages")

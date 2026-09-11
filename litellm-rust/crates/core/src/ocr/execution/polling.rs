@@ -3,7 +3,6 @@ use std::time::Duration;
 use reqwest::Url;
 use tokio::time::Instant;
 
-use crate::auth::Auth;
 use crate::constants::{AZURE_DI_SUBSCRIPTION_HEADER, OCR_POLL_RETRY_SECS};
 use crate::ocr::client::read_json_response;
 use crate::ocr::error::{OcrError, OcrPollingError, OcrResponseError};
@@ -12,6 +11,7 @@ use crate::ocr::transformations::document_intelligence::{
 };
 use crate::ocr::types::OcrConnection;
 use crate::ocr::wire::DecodedOcrResponse;
+use litellm_auth::Auth;
 
 pub(super) async fn read_operation_response(
     http_client: &reqwest::Client,

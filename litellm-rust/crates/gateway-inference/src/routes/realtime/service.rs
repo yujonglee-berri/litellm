@@ -1,19 +1,13 @@
-//! Business logic: select a deployment with the (pure) core router, then call the
-//! provider splice. The seam between `gateway-router` (selection only) and
-//! `io` (the actual WebSocket I/O).
-//!
-//! On connect we try a pre-warmed upstream from the pool (handshake already paid,
-//! `session.created` buffered) and relay it instantly. On a pool miss or dead warm
-//! socket we fresh-dial exactly as before — the pool is never on the critical path
-//! for correctness, only latency.
+//! Deployment selection adapter for the Realtime operation runtime.
 
 use std::time::Duration;
 
 use futures_util::{Sink, Stream};
-use litellm_core::error::Error;
-use litellm_core::realtime::pool::{RealtimePool, upstream_key};
-use litellm_core::realtime::types::RealtimeEvent;
 use litellm_gateway_router::Router;
+use litellm_operation_realtime::Error;
+use litellm_operation_realtime::pool::RealtimePool;
+use litellm_operation_realtime::runtime::{SessionConfig, run_session};
+use litellm_operation_realtime::wire::RealtimeEvent;
 
 /// Select a deployment for `model` and splice the client stream to the provider.
 ///
@@ -38,33 +32,14 @@ where
         .get_available_deployment(model)
         .ok_or_else(|| Error::Routing(format!("no deployment available for model '{model}'")))?;
     let params = &deployment.litellm_params;
-    let provider_model = litellm_core::realtime::resolve_model(&params.model)?;
-
-    // Warm path: take a pooled upstream (handshake already paid) and relay its
-    // buffered session.created immediately. On miss/dead socket fall through.
-    if let Some(key) = upstream_key(
-        provider_model,
-        params.api_key.as_deref(),
-        params.api_base.as_deref(),
-    ) && let Some(handoff) = pool.take(&key)
-    {
-        return litellm_core::realtime::realtime_warm(
-            provider_model,
-            handoff,
+    run_session(
+        pool,
+        SessionConfig {
+            model: &params.model,
+            api_key: params.api_key.as_deref(),
+            api_base: params.api_base.as_deref(),
             idle_timeout,
-            observe,
-            client_in,
-            client_out,
-        )
-        .await;
-    }
-
-    // Cold path: fresh dial (the original behavior).
-    litellm_core::realtime::realtime(
-        provider_model,
-        params.api_key.as_deref(),
-        params.api_base.as_deref(),
-        idle_timeout,
+        },
         observe,
         client_in,
         client_out,

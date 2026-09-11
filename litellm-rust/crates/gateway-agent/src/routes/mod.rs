@@ -14,14 +14,24 @@ use crate::state::AppState;
 
 pub fn app(state: AppState) -> Router {
     Router::new()
+        .merge(health::router())
+        .merge(router())
+        .with_state(state)
+}
+
+/// Domain routes this family contributes to the host.
+pub fn contribute(state: AppState) -> Router {
+    router().with_state(state)
+}
+
+fn router() -> Router<AppState> {
+    Router::new()
         .merge(a2a::router())
         .merge(agents::router())
         .merge(assistants::router())
-        .merge(health::router())
         .merge(memory::router())
         .merge(mcp::router())
         .merge(skills::router())
-        .with_state(state)
 }
 
 async fn not_implemented(_identity: Identity) -> StatusCode {

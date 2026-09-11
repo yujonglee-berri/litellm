@@ -236,8 +236,8 @@ mod tests {
     use crate::state::AppState;
     use axum::body::Body;
     use axum::http::Request;
-    use litellm_core::realtime::pool::RealtimePool;
     use litellm_gateway_router::Router as ModelRouter;
+    use litellm_operation_realtime::pool::RealtimePool;
     use serde_json::json;
     use std::pin::Pin;
     use std::sync::Arc;

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use litellm_gateway_management::constants::{DEFAULT_HOST, DEFAULT_PORT};
+use litellm_gateway_management::keys::KeyManager;
 use litellm_gateway_management::routes;
 use litellm_gateway_management::state::AppState;
 
@@ -20,7 +21,10 @@ async fn main() {
         .await
         .expect("failed to bind listener");
 
-    axum::serve(listener, routes::app(AppState { master_key }))
-        .await
-        .expect("server error");
+    axum::serve(
+        listener,
+        routes::app(AppState::new(master_key), KeyManager::memory()),
+    )
+    .await
+    .expect("server error");
 }

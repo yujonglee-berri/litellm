@@ -2,14 +2,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::AuthError;
 use crate::Error;
-use crate::auth::error::MissingCredential;
 use crate::providers::openai::responses::transformation::OPENAI_RESPONSES_WS_CONFIG;
 use crate::responses::types::ResponsesWsEvent;
 use crate::responses::websocket::ResponsesWebSocketProviderConfig;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
+use litellm_auth::AuthError;
+use litellm_auth::error::MissingCredential;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
@@ -18,7 +18,7 @@ use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::http::header::{AUTHORIZATION, HeaderName};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
-use crate::tls::connect_upstream;
+use litellm_transport::connect_websocket;
 
 use crate::constants::{
     DEFAULT_RESPONSES_WS_CONNECT_TIMEOUT_SECS, DEFAULT_RESPONSES_WS_IDLE_TIMEOUT_SECS,
@@ -64,7 +64,7 @@ impl ResponsesWebSocketConnection {
                 .map_err(|error| Error::InvalidRequest(error.to_string()))?;
             request.headers_mut().insert(header_name, header_value);
         }
-        let connect = connect_upstream(request);
+        let connect = connect_websocket(request);
         let result = match timeout {
             Some(timeout) => tokio::time::timeout(timeout, connect).await.map_err(|_| {
                 Error::Network("Responses WebSocket connection timed out".to_string())
@@ -153,7 +153,7 @@ async fn dial_upstream(
     );
     let result = tokio::time::timeout(
         Duration::from_secs(DEFAULT_RESPONSES_WS_CONNECT_TIMEOUT_SECS),
-        connect_upstream(request),
+        connect_websocket(request),
     )
     .await
     .map_err(|_| Error::Network("Responses WebSocket connection timed out".to_string()))?;

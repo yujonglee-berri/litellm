@@ -1,8 +1,10 @@
-//! Enforcement: the litellm-rust workspace has exactly fourteen crates.
+//! Enforcement: the litellm-rust workspace has exactly twenty-six crates.
 //!
 //! `core` (the Rust SDK), `config` (the config-loading boundary),
 //! `gateway-inference`, `gateway-agent`, and `gateway-management` (the
-//! HTTP/WebSocket hosts),
+//! HTTP/WebSocket route families), `gateway-server` (their combined host),
+//! `persist` (host-injected database backends),
+//! `gateway-otel` (optional OpenTelemetry export),
 //! `python-interop` (domain-neutral PyO3 primitives), and `python-bridge` (the
 //! PyO3 cdylib). Adding or removing a crate must be a
 //! deliberate act: this test fails until the allowlist here is updated, forcing
@@ -27,11 +29,23 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/auth-oauth",
     "crates/core",
     "crates/config",
+    "crates/lifecycle",
+    "crates/operation",
+    "crates/operation-audio-transcription",
+    "crates/operation-chat-completions",
+    "crates/operation-messages",
+    "crates/operation-ocr",
+    "crates/operation-realtime",
+    "crates/operation-responses",
+    "crates/transport",
     "crates/gateway-agent",
     "crates/gateway-inference",
     "crates/gateway-management",
     "crates/gateway-auth",
+    "crates/gateway-otel",
     "crates/gateway-router",
+    "crates/gateway-server",
+    "crates/persist",
     "crates/python-interop",
     "crates/python-bridge",
 ];
@@ -45,11 +59,23 @@ const EXPECTED_CRATE_DIRS: &[&str] = &[
     "auth-oauth",
     "core",
     "config",
+    "lifecycle",
+    "operation",
+    "operation-audio-transcription",
+    "operation-chat-completions",
+    "operation-messages",
+    "operation-ocr",
+    "operation-realtime",
+    "operation-responses",
+    "transport",
     "gateway-agent",
     "gateway-inference",
     "gateway-management",
     "gateway-auth",
+    "gateway-otel",
     "gateway-router",
+    "gateway-server",
+    "persist",
     "python-interop",
     "python-bridge",
 ];

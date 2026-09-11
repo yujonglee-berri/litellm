@@ -1,7 +1,7 @@
 //! LiteLLM inference gateway, a minimal Axum server fronting the Rust router.
 //!
 //! Flow: client → `POST /v1/realtime` → `router.realtime()` selects a deployment
-//! (simple-shuffle), then `litellm-core` invokes OpenAI. The
+//! (simple-shuffle), then `litellm-operation-realtime` invokes OpenAI. The
 //! server owns transport + config; routing lives in the `router` crate.
 //!
 //! The binary requires the `server` feature (declared in `Cargo.toml` via
@@ -13,10 +13,10 @@ use std::sync::Arc;
 
 #[cfg(feature = "python-config")]
 use litellm_config::load_model_list;
-use litellm_core::realtime::pool::{PoolConfig, RealtimePool, upstream_key};
 use litellm_gateway_inference::routes;
 use litellm_gateway_inference::state::AppState;
 use litellm_gateway_router::{Deployment, LiteLLMParams, Router};
+use litellm_operation_realtime::pool::{PoolConfig, RealtimePool};
 
 use litellm_gateway_inference::integrations::custom_logger::CustomLogger;
 use litellm_gateway_inference::integrations::litellm_python_proxy_api::LiteLLMPythonProxyAPILogger;
@@ -92,16 +92,11 @@ async fn main() {
 fn register_deployments(router: &Router, pool: &RealtimePool) {
     for deployment in router.deployments() {
         let params = &deployment.litellm_params;
-        let Ok(provider_model) = litellm_core::realtime::resolve_model(&params.model) else {
-            continue;
-        };
-        if let Some(key) = upstream_key(
-            provider_model,
+        let _ = pool.register(
+            &params.model,
             params.api_key.as_deref(),
             params.api_base.as_deref(),
-        ) {
-            pool.register(key);
-        }
+        );
     }
 }
 

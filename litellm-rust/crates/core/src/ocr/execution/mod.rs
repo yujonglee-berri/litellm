@@ -3,7 +3,7 @@ mod reducto;
 
 use std::future::Future;
 
-use crate::auth::Auth;
+use litellm_auth::Auth;
 
 use super::OcrClient;
 use super::document::{inline_remote_document, validate_inline_document};
@@ -14,8 +14,8 @@ use super::transformations::mistral::{MistralOcrRequest, MistralOcrTransformatio
 use super::transformations::{OcrTransformRequest, OcrTransformResponse, OcrTransformation};
 use super::types::{LiteLLMOcrRequest, LiteLLMOcrResponse, OcrResponseFormat};
 use super::wire::DecodedOcrResponse;
-use crate::auth::ResolvedAuth;
 use crate::operation::RequestTransformation;
+use litellm_auth::ResolvedAuth;
 
 pub(crate) use reducto::ReductoExecution;
 
