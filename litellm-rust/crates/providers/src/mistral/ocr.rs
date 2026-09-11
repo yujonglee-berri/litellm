@@ -1,5 +1,8 @@
 use litellm_adapters::ocr::MistralOcrAdapter;
-use litellm_auth::{ApiKeyAuth, ApiKeySource, SecretValue};
+use litellm_auth::{
+    ApiKeyAuth, ApiKeyAuthContext, ApiKeySource, AuthConfigurationError, AuthError,
+    CredentialLocation, CredentialPlan, CredentialRef, ExistingCredentialPolicy, SecretValue,
+};
 use litellm_operation::{CompleteHooks, NoHooks};
 use litellm_operation_ocr::{OcrCall, OcrResponse};
 use litellm_pipeline::{Error, JsonExecution, Pipeline, ResolveEndpoint};
@@ -29,12 +32,14 @@ impl ApiKeySource for MistralOcrContext {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct MistralOcrEndpoint;
 
-impl ResolveEndpoint<(), MistralOcrParams, OcrCall, MistralOcrContext> for MistralOcrEndpoint {
+impl ResolveEndpoint<ApiKeyAuthContext, MistralOcrParams, OcrCall, MistralOcrContext>
+    for MistralOcrEndpoint
+{
     fn resolve(
         &self,
         _call: &OcrCall,
         context: &MistralOcrContext,
-        _auth: &(),
+        _auth: &ApiKeyAuthContext,
         _params: &MistralOcrParams,
     ) -> Result<String, Error> {
         let base = context
@@ -70,22 +75,69 @@ pub struct MistralOcrConfig<T, H = NoHooks> {
 }
 
 impl<T> MistralOcrConfig<T, NoHooks> {
-    pub fn new(transport: T) -> Self {
-        Self::with_hooks(transport, NoHooks)
+    pub fn new(transport: T) -> Result<Self, AuthError> {
+        Self::with_environment_lookup(transport, environment_lookup)
+    }
+
+    pub fn with_environment_lookup<E>(transport: T, environment: E) -> Result<Self, AuthError>
+    where
+        E: Fn(&str) -> Result<Option<String>, AuthError>,
+    {
+        Self::with_credential_plan(transport, mistral_credential_plan(&environment)?)
     }
 }
 
 impl<T, H> MistralOcrConfig<T, H> {
-    pub fn with_hooks(transport: T, hooks: H) -> Self {
+    pub fn with_hooks(transport: T, hooks: H) -> Result<Self, AuthError> {
+        Ok(Self::with_hooks_and_credential_plan(
+            transport,
+            hooks,
+            mistral_credential_plan(&environment_lookup)?,
+        ))
+    }
+
+    fn with_credential_plan(transport: T, plan: CredentialPlan) -> Result<Self, AuthError>
+    where
+        H: Default,
+    {
+        Ok(Self::with_hooks_and_credential_plan(
+            transport,
+            H::default(),
+            plan,
+        ))
+    }
+
+    fn with_hooks_and_credential_plan(transport: T, hooks: H, plan: CredentialPlan) -> Self {
         Self {
             pipeline: Pipeline::new(
-                ApiKeyAuth::bearer("Mistral", Some("MISTRAL_API_KEY")),
+                ApiKeyAuth::bearer("Mistral", plan)
+                    .existing_credential_policy(ExistingCredentialPolicy::Accept),
                 MistralOcrEndpoint,
                 MistralOcrAdapter,
                 JsonExecution::new(transport),
                 hooks,
             ),
         }
+    }
+}
+
+fn mistral_credential_plan(
+    environment: &dyn Fn(&str) -> Result<Option<String>, AuthError>,
+) -> Result<CredentialPlan, AuthError> {
+    Ok(CredentialPlan::fallback([
+        CredentialPlan::Reference(CredentialRef::Request("api_key".into())),
+        CredentialLocation::Environment("MISTRAL_API_KEY".into())
+            .compile(environment, &|_| Ok(None))?,
+    ]))
+}
+
+fn environment_lookup(name: &str) -> Result<Option<String>, AuthError> {
+    match std::env::var(name) {
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(std::env::VarError::NotUnicode(_)) => Err(AuthError::Configuration(
+            AuthConfigurationError::CredentialLoad,
+        )),
     }
 }
 
@@ -100,5 +152,24 @@ where
         context: &MistralOcrContext,
     ) -> Result<OcrResponse, Error> {
         self.pipeline.handle(call, context).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use litellm_auth::{CredentialSource, DynamicCredentials};
+
+    use super::mistral_credential_plan;
+
+    #[tokio::test]
+    async fn compiled_environment_plan_retains_provider_source() {
+        let plan = mistral_credential_plan(&|name| {
+            Ok((name == "MISTRAL_API_KEY").then(|| "environment-key".into()))
+        })
+        .unwrap();
+
+        let resolution = plan.resolve(&DynamicCredentials::default()).await.unwrap();
+
+        assert_eq!(resolution.source(), Some(CredentialSource::Environment));
     }
 }

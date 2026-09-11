@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use litellm_auth::{
-    ApiKeyAuth, ApiKeySource, AuthError, AuthHandle, AuthResolver, BearerTokenAuth,
-    ExistingHeaderBehavior, ResolvedAuth, TokenAuthResolver, TokenFuture, TokenProvider,
-    TokenProviderHandle,
+    ApiKeyAuth, ApiKeyAuthContext, ApiKeySource, AuthError, AuthHandle, AuthResolver,
+    BearerTokenAuth, ExistingHeaderBehavior, ResolvedAuth, TokenAuthResolver, TokenFuture,
+    TokenProvider, TokenProviderHandle,
 };
 
 use crate::{AzureAuthInputs, AzureAuthService};
@@ -106,6 +106,12 @@ pub struct AzureAuthResolver {
     entra: AzureEntraAuthResolver,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AzureAuthContext {
+    ApiKey(ApiKeyAuthContext),
+    Entra,
+}
+
 impl AzureAuthResolver {
     pub fn new(api_key: ApiKeyAuth, entra: AzureEntraAuthResolver) -> Self {
         Self { api_key, entra }
@@ -115,29 +121,29 @@ impl AzureAuthResolver {
 impl<Input, Services> AuthResolver<Input, Services> for AzureAuthResolver
 where
     Input: Sync,
-    Services: ApiKeySource + Sync,
+    Services: ApiKeySource + std::fmt::Debug + Send + Sync,
 {
     type Authenticator = AuthHandle;
-    type AuthContext = ();
+    type AuthContext = AzureAuthContext;
     type Error = AuthError;
 
     async fn resolve(
         &self,
         input: &Input,
         services: &Services,
-    ) -> Result<ResolvedAuth<AuthHandle, ()>, AuthError> {
+    ) -> Result<ResolvedAuth<AuthHandle, AzureAuthContext>, AuthError> {
         match self.api_key.resolve(input, services).await {
             Ok(resolved) => Ok(ResolvedAuth {
                 authenticator: AuthHandle::new(resolved.authenticator),
                 headers: resolved.headers,
-                context: (),
+                context: AzureAuthContext::ApiKey(resolved.context),
             }),
             Err(AuthError::MissingApiKey { .. }) => {
                 let resolved = self.entra.resolve(input, services).await?;
                 Ok(ResolvedAuth {
                     authenticator: AuthHandle::new(resolved.authenticator),
                     headers: services.extra_headers().to_vec(),
-                    context: (),
+                    context: AzureAuthContext::Entra,
                 })
             }
             Err(error) => Err(error),
@@ -171,6 +177,7 @@ mod tests {
         }
     }
 
+    #[derive(Debug)]
     struct Services {
         api_key: Option<SecretValue>,
         headers: Vec<(String, String)>,
@@ -195,7 +202,14 @@ mod tests {
 
     fn resolver(token: Arc<CountingToken>) -> AzureAuthResolver {
         AzureAuthResolver::new(
-            ApiKeyAuth::header("Azure", None, "api-key"),
+            ApiKeyAuth::header(
+                "Azure",
+                litellm_auth::CredentialPlan::Reference(litellm_auth::CredentialRef::Request(
+                    "api_key".into(),
+                )),
+                "api-key",
+            )
+            .existing_credential_policy(litellm_auth::ExistingCredentialPolicy::Reject),
             AzureEntraAuthResolver::new(TokenProviderHandle::new(token)),
         )
     }
@@ -258,6 +272,12 @@ mod tests {
         );
         assert_eq!(request.headers().get(AUTHORIZATION), None);
         assert_eq!(token.calls.load(Ordering::SeqCst), 0);
+        assert_eq!(
+            resolved.context,
+            AzureAuthContext::ApiKey(ApiKeyAuthContext {
+                source: Some(litellm_auth::CredentialSource::Dynamic),
+            })
+        );
     }
 
     #[tokio::test]
@@ -301,6 +321,7 @@ mod tests {
             Some("Bearer entra-token")
         );
         assert_eq!(token.calls.load(Ordering::SeqCst), 1);
+        assert_eq!(resolved.context, AzureAuthContext::Entra);
     }
 
     #[tokio::test]

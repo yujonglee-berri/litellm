@@ -400,10 +400,13 @@ async fn resolve_reference(
             resolver.resolve(reference).await?
         }
     };
-    Ok(match lookup {
-        CredentialLookup::Found(secret) => Some(secret),
-        CredentialLookup::Missing | CredentialLookup::Declined => None,
-    })
+    match lookup {
+        CredentialLookup::Found(secret) => Ok(Some(secret)),
+        CredentialLookup::Missing => Ok(None),
+        CredentialLookup::Declined => Err(AuthError::Configuration(
+            AuthConfigurationError::UnsupportedCredentialReference,
+        )),
+    }
 }
 
 fn oidc_reference(

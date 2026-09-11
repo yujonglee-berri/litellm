@@ -9,5 +9,7 @@ mod types;
 
 pub use error::Error;
 pub use resolve::AzureAuthService;
-pub use resolver::{AzureAuthResolver, AzureEntraAuthResolver, AzureTokenProvider};
+pub use resolver::{
+    AzureAuthContext, AzureAuthResolver, AzureEntraAuthResolver, AzureTokenProvider,
+};
 pub use types::{AzureAuthInputs, AzureCredentialType, ConfigValue, DEFAULT_AZURE_SCOPE};

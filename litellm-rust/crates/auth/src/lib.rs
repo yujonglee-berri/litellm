@@ -52,10 +52,11 @@ impl<T> Sourced<T> {
     }
 }
 
-pub use api_key::{ApiKeyAuth, ApiKeySource};
+pub use api_key::{ApiKeyAuth, ApiKeyAuthContext, ApiKeySource, ExistingCredentialPolicy};
 pub use credential::{
-    CredentialFileRef, CredentialLookup, CredentialLookupFuture, CredentialPlan,
-    CredentialPlanResolution, CredentialRef, CredentialResolver, CredentialResolverHandle,
+    CredentialFileRef, CredentialLocation, CredentialLookup, CredentialLookupFuture,
+    CredentialPlan, CredentialPlanResolution, CredentialRef, CredentialResolver,
+    CredentialResolverHandle, CredentialSource, DynamicCredentials,
 };
 pub use error::{AuthConfigurationError, AuthError, AwsAuthError, MissingCredential};
 pub use http::CredentialPlacement;

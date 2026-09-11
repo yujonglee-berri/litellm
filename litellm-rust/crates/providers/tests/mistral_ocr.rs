@@ -67,7 +67,8 @@ async fn direct_mistral_composition_maps_authenticates_executes_and_adapts() {
     let config = MistralOcrConfig::new(RecordingTransport {
         captured: captured.clone(),
         response: provider_response.clone(),
-    });
+    })
+    .expect("environment compiles");
     let call = OcrCall {
         model: "mistral-ocr-latest".into(),
         document: OcrDocument::DocumentUrl {
@@ -124,7 +125,8 @@ async fn caller_authorization_is_preserved_without_an_api_key() {
     let config = MistralOcrConfig::new(RecordingTransport {
         captured: captured.clone(),
         response: json!({"pages": []}),
-    });
+    })
+    .expect("environment compiles");
     let call = OcrCall {
         model: "mistral-ocr-latest".into(),
         document: OcrDocument::ImageUrl {

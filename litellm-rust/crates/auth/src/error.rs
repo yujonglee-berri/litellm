@@ -60,6 +60,10 @@ pub enum AuthConfigurationError {
     MissingWorkloadTokenFile,
     #[error("credential reference requires a host credential resolver")]
     MissingHostResolver,
+    #[error("credential resolver does not support the requested reference")]
+    UnsupportedCredentialReference,
+    #[error("credential could not be loaded from its configured environment or file location")]
+    CredentialLoad,
     #[error("caller credential plan requires provider-specific inputs")]
     MissingCallerInputs,
     #[error("credential header {0} already exists")]
