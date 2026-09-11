@@ -3,6 +3,7 @@
 //! Provider crates resolve credentials and choose an authenticator. Routes hand the
 //! authenticator the final HTTP request, after URL and body transformation.
 
+mod api_key;
 mod credential;
 pub mod error;
 mod http;
@@ -51,6 +52,7 @@ impl<T> Sourced<T> {
     }
 }
 
+pub use api_key::{ApiKeyAuth, ApiKeySource};
 pub use credential::{
     CredentialFileRef, CredentialLookup, CredentialLookupFuture, CredentialPlan,
     CredentialPlanResolution, CredentialRef, CredentialResolver, CredentialResolverHandle,

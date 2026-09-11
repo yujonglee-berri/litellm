@@ -1,4 +1,8 @@
-use crate::{DeliveryMode, Operation, SessionOperation, StreamingOperation, WireOperation};
+use std::pin::Pin;
+
+use futures_util::Stream;
+
+use crate::{DeliveryMode, Operation, SessionOperation, WireOperation};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Fidelity {
@@ -68,19 +72,24 @@ pub trait ResponseTransformation<O: Operation, W: WireOperation>:
     fn transform_response(&self, response: Self::WireResponse) -> Result<O::Response, Self::Error>;
 }
 
-pub trait StreamTransformation<O: StreamingOperation, W: WireOperation>:
-    OperationTransformation<O, W>
-{
-    type State: Default;
-    type WireEvent;
-    type Events: IntoIterator<Item = O::StreamEvent>;
-    type Error;
+pub type EventStream<T, E> = Pin<Box<dyn Stream<Item = Result<T, E>> + Send + 'static>>;
 
-    fn transform_stream_event(
+pub trait ServerStreamingContract {
+    type Request: Send;
+    type Event: Send + 'static;
+}
+
+pub trait StreamTransformation {
+    type Caller: ServerStreamingContract;
+    type Upstream: ServerStreamingContract;
+    type Context: Send + 'static;
+    type Error: Send + 'static;
+
+    fn transform_stream(
         &self,
-        state: &mut Self::State,
-        event: Self::WireEvent,
-    ) -> Result<Self::Events, Self::Error>;
+        context: Self::Context,
+        upstream: EventStream<<Self::Upstream as ServerStreamingContract>::Event, Self::Error>,
+    ) -> EventStream<<Self::Caller as ServerStreamingContract>::Event, Self::Error>;
 }
 
 pub trait SessionTransformation<O: SessionOperation, W: WireOperation>:

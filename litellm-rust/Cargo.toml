@@ -15,6 +15,10 @@ members = [
     "crates/operation-ocr",
     "crates/operation-realtime",
     "crates/operation-responses",
+    "crates/protocol",
+    "crates/adapters",
+    "crates/pipeline",
+    "crates/providers",
     "crates/transport",
     "crates/gateway-agent",
     "crates/gateway-inference",
@@ -51,6 +55,10 @@ litellm-operation-messages = { path = "crates/operation-messages" }
 litellm-operation-ocr = { path = "crates/operation-ocr" }
 litellm-operation-realtime = { path = "crates/operation-realtime" }
 litellm-operation-responses = { path = "crates/operation-responses" }
+litellm-protocol = { path = "crates/protocol" }
+litellm-adapters = { path = "crates/adapters" }
+litellm-pipeline = { path = "crates/pipeline" }
+litellm-providers = { path = "crates/providers" }
 litellm-transport = { path = "crates/transport" }
 litellm-gateway-agent = { path = "crates/gateway-agent", default-features = false }
 litellm-gateway-inference = { path = "crates/gateway-inference", default-features = false }

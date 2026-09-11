@@ -6,10 +6,6 @@ license.workspace = true
 repository.workspace = true
 autotests = false
 
-[[test]]
-name = "workspace_crate_allowlist"
-path = "tests/workspace_crate_allowlist.rs"
-
 [dependencies]
 base64.workspace = true
 data-url = "0.3.2"

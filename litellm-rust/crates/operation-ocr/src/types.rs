@@ -1,5 +1,6 @@
-use litellm_auth::SecretValue;
-use litellm_operation::{ApiKeySource, Operation};
+use litellm_operation::Operation;
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Ocr;
@@ -11,74 +12,53 @@ impl Operation for Ocr {
     const NAME: &'static str = "ocr";
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OcrRequest<'a> {
     pub model: &'a str,
-    pub document_uri: &'a str,
+    pub document: &'a OcrDocument,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OcrResponse {
-    pub pages: Vec<OcrPage>,
+    pub pages: Vec<Value>,
+    pub model: String,
+    pub document_annotation: Option<Value>,
+    pub usage_info: Option<Value>,
+    pub object: String,
+    #[serde(flatten)]
+    pub extra_fields: Map<String, Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_native_response: Option<Value>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct OcrPage {
-    pub index: u32,
-    pub markdown: String,
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum OcrResponseFormat {
+    #[default]
+    Litellm,
+    Native,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OcrCall {
     pub model: String,
     pub document: OcrDocument,
-    pub parameters: serde_json::Map<String, serde_json::Value>,
+    pub parameters: Map<String, Value>,
+    pub response_format: OcrResponseFormat,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum OcrDocument {
-    Uri(String),
-    Inline { media_type: String, bytes: Vec<u8> },
-}
-
-impl OcrDocument {
-    pub fn uri(&self) -> Option<&str> {
-        match self {
-            Self::Uri(uri) => Some(uri),
-            Self::Inline { .. } => None,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct OcrCallContext {
-    pub api_key: Option<SecretValue>,
-    pub api_base: Option<String>,
-}
-
-impl ApiKeySource for OcrCallContext {
-    fn api_key(&self) -> Option<&SecretValue> {
-        self.api_key.as_ref()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn document_reports_uri_only_for_remote_sources() {
-        assert_eq!(
-            OcrDocument::Uri("https://example.com/doc.pdf".into()).uri(),
-            Some("https://example.com/doc.pdf")
-        );
-        assert_eq!(
-            OcrDocument::Inline {
-                media_type: "application/pdf".into(),
-                bytes: vec![1, 2, 3],
-            }
-            .uri(),
-            None
-        );
-    }
+    #[serde(rename = "document_url")]
+    DocumentUrl {
+        document_url: String,
+        #[serde(flatten)]
+        extra_fields: Map<String, Value>,
+    },
+    #[serde(rename = "image_url")]
+    ImageUrl {
+        image_url: String,
+        #[serde(flatten)]
+        extra_fields: Map<String, Value>,
+    },
 }

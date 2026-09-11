@@ -3,7 +3,7 @@
 
 # Crates
 
-The workspace has 26 crates
+The workspace has 30 crates
 
 | Crate | Role |
 |-------|------|
@@ -22,6 +22,10 @@ The workspace has 26 crates
 | litellm-operation-ocr | OCR semantic contract and plans |
 | litellm-operation-realtime | Realtime semantic contract, OpenAI WebSocket execution, instrumentation, and warm-session runtime |
 | litellm-operation-responses | Responses semantic contract |
+| litellm-protocol | Upstream wire contracts and protocol decoding |
+| litellm-adapters | Semantic transformations between caller and upstream contracts |
+| litellm-pipeline | Typed execution and lifecycle orchestration |
+| litellm-providers | Provider presets and composition entry points |
 | litellm-transport | Final-request authentication and execution boundary |
 | litellm-gateway-agent | Agent gateway routes |
 | litellm-gateway-auth | Inbound gateway authentication |
@@ -34,4 +38,4 @@ The workspace has 26 crates
 | litellm-python-bridge | Python extension module |
 | litellm-python-interop | Python interop foundation |
 
-Auth crates must not depend on operation crates. Operation crates may depend on `litellm-operation` and shared auth crates, transport, or lifecycle foundations. They must never depend on `litellm-core`, gateway crates, or sibling operation crates
+Auth crates must not depend on operation crates. Protocol depends on `litellm-operation`; adapters connect operation crates to protocol; pipeline depends on shared foundations; providers assemble concrete adapters, pipeline execution, auth, endpoints, and operation contracts. New caller operation code must not depend on protocol, adapters, pipeline, providers, core, or gateway crates
