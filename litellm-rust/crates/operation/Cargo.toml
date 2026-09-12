@@ -17,3 +17,4 @@ thiserror.workspace = true
 [dev-dependencies]
 http = "1"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+trybuild = "1"

@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `String: litellm_operation::interaction::Delivery` is not satisfied
+ --> tests/ui/invalid_delivery.rs:8:25
+  |
+8 |     type ServerOutput = String;
+  |                         ^^^^^^ the trait `litellm_operation::interaction::Delivery` is not implemented for `String`
+  |
+help: the following other types implement trait `litellm_operation::interaction::Delivery`
+ --> src/interaction.rs
+  |
+  | impl<T: Send + 'static> Delivery for Single<T> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Single<T>`
+...
+  | impl<T: Send + 'static> Delivery for Streaming<T> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Streaming<T>`
+note: required by a bound in `litellm_operation::InteractionWireProtocol::ServerOutput`
+ --> src/interaction.rs
+  |
+  |     type ServerOutput: Delivery;
+  |                        ^^^^^^^^ required by this bound in `InteractionWireProtocol::ServerOutput`

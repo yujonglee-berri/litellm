@@ -4,6 +4,7 @@ mod endpoint;
 mod error;
 mod execution;
 mod hooks;
+pub mod interaction;
 mod operation;
 mod pipeline;
 mod plan;
@@ -23,6 +24,10 @@ pub use execution::{ExecuteOperation, JsonExecution};
 pub use hooks::{
     CompleteHooks, DuringCallHook, FailureHook, NoHooks, PostCallHook, PreCallHook,
     StreamEventHook, StreamHooks, StreamIteratorHook, StreamLogHook, SuccessHook,
+};
+pub use interaction::{
+    Action, ActionsOf, CloseReason, Context, InteractionOperation, InteractionWireProtocol, Never,
+    Prepared, ServerMessage, ServerValue, Signal, SignalOf, Single, StateMachineAdapter, Streaming,
 };
 pub use operation::{Operation, SessionOperation, StreamingOperation};
 pub use pipeline::Pipeline;
