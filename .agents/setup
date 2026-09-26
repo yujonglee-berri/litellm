@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+run_step() {
+    local label="$1"
+    shift
+    printf '\n==> %s\n' "$label"
+    time "$@"
+}
+
+missing_packages=()
+for package in postgresql redis-server; do
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -Fqx 'install ok installed'; then
+        missing_packages+=("$package")
+    fi
+done
+
+if ((${#missing_packages[@]})); then
+    run_step "Refreshing system package metadata" sudo apt-get update
+    run_step "Installing system dependencies" sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing_packages[@]}"
+fi
+
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo_path='export PATH="$HOME/.cargo/bin:$PATH"'
+if ! grep -Fqx "$cargo_path" "$HOME/.bash_profile" 2>/dev/null; then
+    printf '\n%s\n' "$cargo_path" >> "$HOME/.bash_profile"
+fi
+if ! command -v rustup >/dev/null 2>&1; then
+    rustup_directory="$(mktemp -d)"
+    trap 'rm -rf "$rustup_directory"' EXIT
+    run_step "Downloading rustup" curl -fsSL -o "$rustup_directory/rustup-init" https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init
+    run_step "Downloading rustup checksum" curl -fsSL -o "$rustup_directory/rustup-init.sha256" https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init.sha256
+    run_step "Verifying rustup" bash -c 'cd "$1" && sha256sum -c rustup-init.sha256' _ "$rustup_directory"
+    chmod +x "$rustup_directory/rustup-init"
+    run_step "Installing rustup" "$rustup_directory/rustup-init" -y --no-modify-path --profile minimal
+fi
+
+run_step "Installing the pinned Rust toolchain" rustup toolchain install --no-self-update
+if ! npm --version | awk -F. '$1 > 11 || ($1 == 11 && $2 >= 10) { found = 1 } END { exit !found }'; then
+    run_step "Installing the dashboard npm version" npm install --global npm@11.10.0 --no-audit --no-fund
+fi
+run_step "Installing Python dependencies" env UV_PYTHON=3.12 uv sync --inexact --frozen --extra proxy --group proxy-dev --group e2e-dev
+run_step "Generating the Prisma client" uv run --no-sync python scripts/prisma_generate_if_needed.py
+dashboard_directory="ui/litellm-dashboard"
+dashboard_fingerprint="$(sha256sum "$dashboard_directory/package.json" "$dashboard_directory/package-lock.json" | sha256sum | cut -d' ' -f1)"
+dashboard_marker="$dashboard_directory/node_modules/.amp-dependency-fingerprint"
+if [[ ! -f "$dashboard_marker" ]] || [[ "$(cat "$dashboard_marker")" != "$dashboard_fingerprint" ]]; then
+    run_step "Installing dashboard dependencies" bash -c 'cd ui/litellm-dashboard && ../../scripts/with_dashboard_node.sh npm ci --no-audit --no-fund'
+    printf '%s\n' "$dashboard_fingerprint" > "$dashboard_marker"
+else
+    printf '\n==> Dashboard dependencies already match the lockfile\n'
+fi
+run_step "Fetching Rust dependencies" cargo fetch --locked --manifest-path litellm-rust/Cargo.toml
